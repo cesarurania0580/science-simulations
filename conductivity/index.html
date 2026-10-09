@@ -156,6 +156,13 @@
                         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex-1">
                             <h3 class="text-slate-800 font-bold mb-4 border-b pb-2"><i class="fa-solid fa-sliders text-blue-500 mr-2"></i>Controls</h3>
 
+                            <!-- One instruction at a time, and each trial's progress -->
+                            <div id="guide" class="mb-4 rounded-xl border-2 border-amber-300 bg-amber-50 p-3" aria-live="polite">
+                                <p class="text-xs font-bold uppercase tracking-wider text-amber-700">What to do now</p>
+                                <p id="guide-now" class="font-semibold text-slate-800 mt-1"></p>
+                                <div id="guide-progress" class="mt-2 space-y-1 text-xs text-slate-600"></div>
+                            </div>
+
                             <!-- State info -->
                             <div class="flex justify-between items-center mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
                                 <span class="text-slate-600 font-medium">Total Salt Dissolved:</span>
@@ -169,6 +176,7 @@
                             <!-- How much each press adds -->
                             <div class="mb-3">
                                 <span class="text-slate-600 text-sm font-medium">Amount to add each time:</span>
+                                <span id="step-locked" class="hidden text-xs text-slate-500 ml-1">(locked: every trial uses the same amounts)</span>
                                 <div class="flex gap-2 mt-2">
                                     <button onclick="setStep(0.5)" data-step="0.5" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">0.50 g</button>
                                     <button onclick="setStep(1)" data-step="1" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">1.00 g</button>
@@ -344,32 +352,93 @@
             document.getElementById('trial-display').innerText = trialNumber;
 
             const btnAdd = document.getElementById('btn-add-salt');
-            if (saltMass + saltStep > MAX_SALT + 1e-9) {
+            const blocked = addBlockedReason();
+            if (blocked) {
                 btnAdd.disabled = true;
                 btnAdd.classList.add('opacity-50', 'cursor-not-allowed');
-                btnAdd.innerHTML = saltMass >= MAX_SALT - 1e-9
-                    ? '<i class="fa-solid fa-ban mr-2"></i> Max Salt Reached (10.00 g)'
-                    : `<i class="fa-solid fa-ban mr-2"></i> ${fmtMass(saltStep)} g would go over 10.00 g`;
+                btnAdd.innerHTML = `<i class="fa-solid fa-ban mr-2"></i> Add ${fmtMass(saltStep)} g Salt — ${recordedHere() ? 'stop here' : 'record first'}`;
             } else {
                 btnAdd.disabled = false;
                 btnAdd.classList.remove('opacity-50', 'cursor-not-allowed');
                 btnAdd.innerHTML = `<i class="fa-solid fa-spoon mr-2"></i> Add ${fmtMass(saltStep)} g Salt (NaCl)`;
             }
 
+            const locked = stepLocked();
+            document.getElementById('step-locked').classList.toggle('hidden', !locked);
             document.querySelectorAll('.step-btn').forEach(b => {
+                b.disabled = locked && parseFloat(b.dataset.step) !== saltStep;
                 const on = parseFloat(b.dataset.step) === saltStep;
                 b.className = 'step-btn flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors ' +
-                    (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50');
+                    (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50') +
+                    (b.disabled ? ' opacity-40 cursor-not-allowed' : '');
             });
+            updateGuide();
         }
 
         function setStep(step) {
+            if (stepLocked()) return;
             saltStep = step;
             updateUI();
         }
 
+        // ================================================================
+        // The procedure: trial 1 sets the plan, the guide says what to do next
+        // ================================================================
+        // Students got lost (Cesar, 2026-10-09): they added salt before recording,
+        // changed the step between trials, or refilled half-way, and the table filled
+        // with gaps. So: trial 1 decides the amounts; the step size locks after the
+        // first reading; salt cannot be added until the current amount is recorded;
+        // later trials stop at trial 1's last amount; refilling an unfinished trial
+        // asks first. The guide box names the one next action.
+        const TRIALS_WANTED = 3;
+        const stepLocked = () => Object.keys(readings).some(t => Object.keys(readings[t]).length);
+        const plan = () => Object.keys(readings[1] || {}).sort((a, b) => parseFloat(a) - parseFloat(b));
+        const lastPlanned = () => { const p = plan(); return p.length ? parseFloat(p[p.length - 1]) : null; };
+        const recordedHere = () => !!(readings[trialNumber] && readings[trialNumber][fmtMass(saltMass)] !== undefined);
+        const missingIn = t => plan().filter(m => !(readings[t] && readings[t][m] !== undefined));
+        const trialDone = t => t > 1 && plan().length > 0 && missingIn(t).length === 0;
+
+        // Why "Add salt" is not allowed right now, or '' when it is.
+        function addBlockedReason() {
+            if (!recordedHere()) return `Record the voltage at ${fmtMass(saltMass)} g first.`;
+            if (trialNumber > 1 && lastPlanned() !== null && saltMass + saltStep > lastPlanned() + 1e-9)
+                return `Trial 1 stopped at ${fmtMass(lastPlanned())} g, so this trial stops there too.`;
+            if (saltMass + saltStep > MAX_SALT + 1e-9) return saltMass >= MAX_SALT - 1e-9 ? 'Maximum salt reached (10.00 g).' : `${fmtMass(saltStep)} g would go over 10.00 g.`;
+            return '';
+        }
+
+        function updateGuide() {
+            const now = document.getElementById('guide-now');
+            if (!now) return;
+            const here = fmtMass(saltMass);
+            let msg;
+            if (!recordedHere()) msg = `Trial ${trialNumber}: press <b>Record Voltage</b> for ${here} g.`;
+            else if (trialNumber === 1) {
+                msg = saltMass + saltStep <= MAX_SALT + 1e-9
+                    ? `Trial 1: press <b>Add ${fmtMass(saltStep)} g Salt</b>, then record again. When you have enough amounts, press <b>Empty &amp; Refill</b> for trial 2.`
+                    : 'Trial 1 is finished. Press <b>Empty &amp; Refill</b> for trial 2.';
+            } else if (missingIn(trialNumber).length) {
+                msg = `Trial ${trialNumber}: press <b>Add ${fmtMass(saltStep)} g Salt</b>, then record again (next: ${missingIn(trialNumber)[0]} g).`;
+            } else if (trialNumber < TRIALS_WANTED) msg = `Trial ${trialNumber} is finished. Press <b>Empty &amp; Refill</b> for trial ${trialNumber + 1}.`;
+            else msg = `You have ${TRIALS_WANTED} trials for every amount. Go to the <b>Data Table</b> and work out your means.`;
+            now.innerHTML = msg;
+
+            // Progress: one line per trial so far
+            const p = plan();
+            const lines = [];
+            for (let t = 1; t <= Math.max(trialNumber, 1); t++) {
+                const got = Object.keys(readings[t] || {}).length;
+                const of = t === 1 ? '' : ` of ${p.length}`;
+                const done = t === 1 ? (t < trialNumber ? ' ✓' : '') : (trialDone(t) ? ' ✓' : '');
+                lines.push(`<div>${t === trialNumber ? '▶' : '&nbsp;&nbsp;'} Trial ${t}: ${got}${of} amounts recorded${done}</div>`);
+            }
+            if (p.length) lines.push(`<div class="text-slate-400">Amounts (set by trial 1): ${p.join(', ')} g</div>`);
+            document.getElementById('guide-progress').innerHTML = lines.join('');
+        }
+
         function addSalt() {
-            if (saltMass + saltStep > MAX_SALT + 1e-9) return;
+            const why = addBlockedReason();
+            if (why) { say(why); return; }
             // Round to two decimals so repeated steps never drift (0.1 + 0.2 trap)
             saltMass = Math.round((saltMass + saltStep) * 100) / 100;
             readingFactor = randomFactor(READING_SPREAD);
@@ -380,6 +449,10 @@
 
         // A new trial: fresh distilled water, same results table.
         function refillBeaker() {
+            const got = Object.keys(readings[trialNumber] || {}).length;
+            if (!got) { say(`Trial ${trialNumber} has no readings yet — record some before refilling.`); return; }
+            const missing = trialNumber > 1 ? missingIn(trialNumber) : [];
+            if (missing.length && !confirm(`Trial ${trialNumber} is missing ${missing.join(' g, ')} g. Empty the beaker anyway and start trial ${trialNumber + 1}?`)) return;
             trialNumber++;
             saltMass = 0;
             beakerFactor = randomFactor(BEAKER_SPREAD);
@@ -400,6 +473,7 @@
             readings[trialNumber][m] = v;
             delete meanStatus[m];   // this row's mean has changed
             dataChanged();
+            updateUI();
             say(`Recorded: ${m} g → ${fmtVolt(v)} V in trial ${trialNumber}.`);
         }
 
