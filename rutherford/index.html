@@ -1,0 +1,484 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#0d0d1f;margin:0;padding:0}
+:root{
+  --bg:#0d0d1f;--bg2:#13132a;--bg3:#1a1a30;
+  --border:#2a2a4a;--border2:#3a3a5a;
+  --text:#e8e8f0;--text2:#9090b0;
+  --blue:#378ADD;--green:#1D9E75;--amber:#BA7517;--red:#D85A30;
+}
+
+/* ── MODAL OVERLAY ── */
+#introModal{
+  position:fixed;inset:0;z-index:9999;
+  background:rgba(5,5,18,0.96);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+#introModal.hidden{display:none}
+.modal-box{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:14px;
+  padding:24px;max-width:680px;width:100%;
+}
+.modal-box h2{font-size:17px;font-weight:500;color:var(--text);margin-bottom:5px}
+.modal-box p{font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:18px}
+.videos-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.vid-block{display:flex;flex-direction:column;gap:6px}
+.vid-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.vid-block video{width:100%;border-radius:8px;border:1px solid var(--border);background:#000;display:block}
+.vid-status{font-size:11px;color:var(--text2);text-align:center;height:16px;transition:color .3s}
+.vid-status.watched{color:var(--green)}
+#startBtn{
+  width:100%;padding:11px;font-size:14px;font-weight:500;border-radius:8px;
+  border:none;cursor:pointer;transition:background .2s;
+  background:#2a2a45;color:var(--text2);
+}
+#startBtn.ready{background:var(--blue);color:#fff;cursor:pointer}
+#startBtn.ready:hover{background:#185FA5}
+.skip-hint{font-size:11px;color:var(--text2);text-align:center;margin-top:10px;opacity:0.6}
+
+/* ── MAIN APP ── */
+#wrap{background:var(--bg);padding:14px;font-family:var(--font-sans,system-ui,sans-serif);color:var(--text);min-height:100vh;width:100%;overflow-x:hidden}
+.title-row{margin-bottom:10px}
+.title-row h2{font-size:16px;font-weight:500;color:var(--text);margin-bottom:2px}
+.title-row p{font-size:12px;color:var(--text2);line-height:1.5}
+.main{display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start;width:100%}
+.canvas-col{display:flex;flex-direction:column;gap:6px;min-width:0}
+#simWrap{width:100%;position:relative}
+canvas#sim{border-radius:10px;background:var(--bg);display:block;width:100%;height:auto;cursor:default;border:1px solid var(--border)}
+.click-hint{font-size:12px;color:rgba(100,160,255,0.55);text-align:center}
+.panel{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pcard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.pcard-title{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:11px}
+.nuc-row{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.nuc-row label{font-size:13px;color:var(--text2);flex-shrink:0}
+.nuc-btns{display:flex;gap:6px;flex:1}
+.nuc-btn{flex:1;padding:7px 4px;font-size:13px;font-weight:500;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s;text-align:center;user-select:none}
+.nuc-btn:hover{background:#252545;color:var(--text)}
+.nuc-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.trow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.trow span{font-size:13px;color:var(--text2);flex-shrink:0}
+.tbar-wrap{flex:1;min-width:0;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.tbar-fill{height:100%;background:var(--blue);border-radius:3px;width:0%;transition:width .1s linear}
+.tlabel{font-size:13px;color:var(--text2);min-width:32px;text-align:right;flex-shrink:0}
+.btn-row{display:flex;gap:8px;margin-top:6px}
+.btn{flex:1;padding:9px 6px;font-size:13px;font-weight:500;border-radius:7px;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text);transition:background .15s;min-width:0}
+.btn:hover{background:#252545}
+.btn.go{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn.go:hover{background:#185FA5}
+.btn:disabled{opacity:.5;cursor:default}
+.total-lbl{font-size:12px;color:var(--text2);margin-bottom:8px}
+.bg{margin-bottom:7px}
+.bl{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:3px}
+.bw{background:var(--bg3);border-radius:3px;overflow:hidden;height:16px;border:1px solid var(--border)}
+.bf{height:100%;border-radius:3px;transition:width .4s;min-width:2px}
+.leg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.li{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2)}
+.ld{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.questions{display:flex;flex-direction:column;gap:7px}
+.q{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)}
+.q-num{font-size:12px;font-weight:500;color:var(--blue);flex-shrink:0;margin-top:1px}
+.q-text{font-size:12px;color:var(--text2);line-height:1.55}
+.q.unlocked .q-text{color:var(--text)}
+.q.unlocked{border-color:var(--border2)}
+.q.locked{opacity:0.45}
+.info-section{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.icard{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.icard-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer}
+.icard-hdr:hover{background:var(--bg3)}
+.icard-hdr-title{font-size:13px;font-weight:500;color:var(--text)}
+.icard-hint{font-size:11px;color:var(--text2)}
+.chevron{font-size:10px;color:var(--text2);transition:transform .2s;margin-left:5px}
+.chevron.open{transform:rotate(180deg)}
+.icard-body{display:none;padding:10px 12px;border-top:1px solid var(--border)}
+.icard-body.open{display:block}
+.icard-body img{width:100%;border-radius:6px;margin-bottom:6px;display:block;object-fit:cover;max-height:120px}
+.icard-body .cap{font-size:10px;color:var(--text2);margin-top:-3px;margin-bottom:7px;font-style:italic}
+.icard-body p{font-size:12px;color:var(--text2);line-height:1.65}
+.icard-body b{color:var(--text)}
+</style>
+
+<!-- INTRO MODAL -->
+<div id="introModal">
+  <div class="modal-box">
+    <h2>Before you start — watch these two short videos</h2>
+    <p>They will give you the context you need to understand what you are about to explore in the simulation.</p>
+    <div class="videos-row">
+      <div class="vid-block">
+        <span class="vid-label">Video 1</span>
+        <video id="vid1" controls playsinline preload="metadata">
+          <source src="1.mp4" type="video/mp4">
+          Your browser does not support video.
+        </video>
+        <span class="vid-status" id="status1">Not watched yet</span>
+      </div>
+      <div class="vid-block">
+        <span class="vid-label">Video 2</span>
+        <video id="vid2" controls playsinline preload="metadata">
+          <source src="2.mp4" type="video/mp4">
+          Your browser does not support video.
+        </video>
+        <span class="vid-status" id="status2">Not watched yet</span>
+      </div>
+    </div>
+    <button id="startBtn" disabled>Watch both videos to continue</button>
+    <p class="skip-hint">You can replay the videos at any time after starting.</p>
+  </div>
+</div>
+
+<!-- MAIN SIMULATION -->
+<div id="wrap">
+  <div class="title-row">
+    <h2>Rutherford's Gold Foil Experiment</h2>
+    <p>Each trial fires alpha particles for 5 seconds. Click the <span style="color:rgba(180,180,220,0.9)">lead block</span> or <span style="color:rgba(100,170,255,0.9)">detector arc</span> to learn more.</p>
+  </div>
+  <div class="main">
+    <div class="canvas-col">
+      <div id="simWrap"><canvas id="sim"></canvas></div>
+      <p class="click-hint">Click the lead block or detector screen to explore</p>
+    </div>
+    <div class="panel">
+      <div class="pcard">
+        <div class="pcard-title">Controls</div>
+        <div class="nuc-row">
+          <label>Nucleus</label>
+          <div class="nuc-btns">
+            <div class="nuc-btn active" id="nb-tiny"   onclick="setNuc('tiny')">Tiny</div>
+            <div class="nuc-btn"        id="nb-medium" onclick="setNuc('medium')">Medium</div>
+            <div class="nuc-btn"        id="nb-large"  onclick="setNuc('large')">Large</div>
+          </div>
+        </div>
+        <div class="trow">
+          <span>Trial</span>
+          <div class="tbar-wrap"><div class="tbar-fill" id="timerBar"></div></div>
+          <span class="tlabel" id="timerLabel">5.0s</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn go" id="btnFire">Fire beam</button>
+          <button class="btn"    id="btnReset">Reset</button>
+        </div>
+      </div>
+      <div class="pcard">
+        <div class="pcard-title">Deflection results</div>
+        <div class="total-lbl" id="totLbl">Total: 0 particles</div>
+        <div class="bg"><div class="bl"><span>Straight (0–1°)</span><span id="p0">0%</span></div><div class="bw"><div class="bf" id="b0" style="width:0%;background:var(--blue)"></div></div></div>
+        <div class="bg"><div class="bl"><span>Slight (1–10°)</span><span id="p1">0%</span></div><div class="bw"><div class="bf" id="b1" style="width:0%;background:var(--green)"></div></div></div>
+        <div class="bg"><div class="bl"><span>Large (&gt;10°)</span><span id="p2">0%</span></div><div class="bw"><div class="bf" id="b2" style="width:0%;background:var(--amber)"></div></div></div>
+        <div class="bg"><div class="bl"><span>Bounced back!</span><span id="p3">0%</span></div><div class="bw"><div class="bf" id="b3" style="width:0%;background:var(--red)"></div></div></div>
+        <div class="leg">
+          <div class="li"><div class="ld" style="background:var(--blue)"></div>straight</div>
+          <div class="li"><div class="ld" style="background:var(--green)"></div>slight</div>
+          <div class="li"><div class="ld" style="background:var(--amber)"></div>large</div>
+          <div class="li"><div class="ld" style="background:var(--red)"></div>bounced</div>
+        </div>
+      </div>
+      <div class="pcard">
+        <div class="pcard-title">Think about it</div>
+        <div class="questions">
+          <div class="q locked" id="q1"><span class="q-num">1</span><span class="q-text">Where do most particles end up? What does that tell you about the inside of the gold foil?</span></div>
+          <div class="q locked" id="q2"><span class="q-num">2</span><span class="q-text">Some particles change direction. What could be inside the foil that pushes them sideways?</span></div>
+          <div class="q locked" id="q3"><span class="q-num">3</span><span class="q-text">A few particles bounce almost straight back. How heavy or solid would something need to be to do that?</span></div>
+          <div class="q locked" id="q4"><span class="q-num">4</span><span class="q-text">Change the nucleus size and run again. How do the results change? What does that tell you about the size of the real nucleus?</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="info-section">
+    <div class="icard" id="cardLead">
+      <div class="icard-hdr" onclick="toggleCard('Lead')">
+        <span class="icard-hdr-title">Radium source &amp; lead block</span>
+        <span style="display:flex;align-items:center"><span class="icard-hint" id="hintLead">click to expand</span><span class="chevron" id="chevLead">▼</span></span>
+      </div>
+      <div class="icard-body" id="bodyLead">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Radium_226_decay_chain.jpg/320px-Radium_226_decay_chain.jpg" alt="Radium decay" onerror="this.style.display='none'">
+        <p class="cap">Radium-226 decay chain (Wikimedia Commons)</p>
+        <p>A small amount of <b>radium</b> sits inside a thick <b>lead block</b>. Radium is radioactive — it shoots alpha particles in all directions. The dense lead absorbs them all except those escaping through a narrow slit. Alpha particles are helium nuclei: <b>2 protons + 2 neutrons</b> — exactly what you see flying across the screen!</p>
+      </div>
+    </div>
+    <div class="icard" id="cardDet">
+      <div class="icard-hdr" onclick="toggleCard('Det')">
+        <span class="icard-hdr-title">Detector screen</span>
+        <span style="display:flex;align-items:center"><span class="icard-hint" id="hintDet">click to expand</span><span class="chevron" id="chevDet">▼</span></span>
+      </div>
+      <div class="icard-body" id="bodyDet">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Geiger-Marsden_experiment_expectation_and_result.svg/320px-Geiger-Marsden_experiment_expectation_and_result.svg.png" alt="Geiger Marsden" onerror="this.style.display='none'">
+        <p class="cap">Expected vs. actual results (Wikimedia Commons)</p>
+        <p>The blue arc is a circular screen coated with <b>zinc sulfide (ZnS)</b>. Each alpha particle that hits it produces a tiny flash of light — a <b>scintillation</b>. Geiger and Marsden counted these flashes by hand in a dark room! Most appeared straight ahead, but a few at large angles changed our understanding of the atom forever.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── VIDEO MODAL LOGIC ──
+const vid1=document.getElementById('vid1');
+const vid2=document.getElementById('vid2');
+const status1=document.getElementById('status1');
+const status2=document.getElementById('status2');
+const startBtn=document.getElementById('startBtn');
+let w1=false,w2=false;
+
+function checkBothWatched(){
+  if(w1&&w2){
+    startBtn.disabled=false;
+    startBtn.classList.add('ready');
+    startBtn.textContent='Start the simulation →';
+  }
+}
+
+vid1.addEventListener('ended',()=>{
+  w1=true;
+  status1.textContent='✓ Watched';
+  status1.classList.add('watched');
+  checkBothWatched();
+});
+vid2.addEventListener('ended',()=>{
+  w2=true;
+  status2.textContent='✓ Watched';
+  status2.classList.add('watched');
+  checkBothWatched();
+});
+
+startBtn.addEventListener('click',()=>{
+  if(!startBtn.disabled){
+    // pause videos before closing
+    vid1.pause();vid2.pause();
+    document.getElementById('introModal').classList.add('hidden');
+  }
+});
+
+// ── SIMULATION ──
+const cv=document.getElementById('sim');
+const cx=cv.getContext('2d');
+let W,H,FOIL_X,SRC_X,NY,DET_R,LEAD_ZONE,stars=[];
+
+const NUC_SIZES={tiny:3,medium:8,large:14};
+let nucR=NUC_SIZES.tiny;
+let currentNucKey='tiny';
+
+function setNuc(size){
+  if(simState==='firing'||simState==='draining')return;
+  currentNucKey=size;nucR=NUC_SIZES[size];
+  ['tiny','medium','large'].forEach(s=>document.getElementById('nb-'+s).classList.toggle('active',s===size));
+  if(simState==='idle')drawStatic();
+}
+
+function sizeCanvas(){
+  const wrap=document.getElementById('simWrap');
+  const w=wrap.clientWidth;
+  const h=Math.round(Math.min(window.innerHeight*0.68,w*0.72));
+  cv.width=w;cv.height=h;W=w;H=h;
+  FOIL_X=Math.round(W*0.60);SRC_X=Math.round(W*0.12);NY=Math.round(H*0.50);
+  DET_R=Math.round(Math.min(W*0.56,H*0.42));
+  const lw=Math.round(W*0.085),lh=Math.round(H*0.13);
+  LEAD_ZONE={x:SRC_X-Math.round(lw/2),y:NY-Math.round(lh/2),w:lw,h:lh};
+  stars=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,a:Math.random()*0.25+0.04}));
+}
+
+let particles=[],counts=[0,0,0,0],total=0;
+let simState='idle',animId=null,trialStart=0,spawnAcc=0;
+let drainStart=0,fadeAlpha=1.0;
+const TRIAL=5000,FADE_DURATION=800;
+let q1done=false,q2done=false,q3done=false,q4done=false,trialCount=0;
+
+document.getElementById('btnFire').addEventListener('click',()=>{if(simState==='idle')startTrial();});
+document.getElementById('btnReset').addEventListener('click',resetAll);
+
+let resizeTimer;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{cancelAnimationFrame(animId);animId=null;simState='idle';particles=[];sizeCanvas();drawStatic();},120);
+});
+
+function toggleCard(id){
+  const body=document.getElementById('body'+id),chev=document.getElementById('chev'+id),hint=document.getElementById('hint'+id);
+  const open=body.classList.contains('open');
+  body.classList.toggle('open',!open);chev.classList.toggle('open',!open);
+  hint.textContent=open?'click to expand':'click to collapse';
+}
+
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(),sx=W/r.width,sy=H/r.height;
+  const mx=(e.clientX-r.left)*sx,my=(e.clientY-r.top)*sy,lz=LEAD_ZONE;
+  if(mx>=lz.x&&mx<=lz.x+lz.w&&my>=lz.y&&my<=lz.y+lz.h){
+    if(!document.getElementById('bodyLead').classList.contains('open'))toggleCard('Lead');
+    document.getElementById('cardLead').scrollIntoView({behavior:'smooth',block:'nearest'});flash('cardLead');return;
+  }
+  const dx=mx-FOIL_X,dy=my-NY,dist=Math.sqrt(dx*dx+dy*dy),ang=Math.atan2(dy,dx);
+  if(dist>DET_R*0.88&&dist<DET_R*1.12&&Math.abs(ang)<Math.PI*0.88){
+    if(!document.getElementById('bodyDet').classList.contains('open'))toggleCard('Det');
+    document.getElementById('cardDet').scrollIntoView({behavior:'smooth',block:'nearest'});flash('cardDet');
+  }
+});
+
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect(),sx=W/r.width,sy=H/r.height;
+  const mx=(e.clientX-r.left)*sx,my=(e.clientY-r.top)*sy,lz=LEAD_ZONE;
+  let hot=mx>=lz.x&&mx<=lz.x+lz.w&&my>=lz.y&&my<=lz.y+lz.h;
+  if(!hot){const dx=mx-FOIL_X,dy=my-NY,d=Math.sqrt(dx*dx+dy*dy),a=Math.atan2(dy,dx);hot=d>DET_R*0.88&&d<DET_R*1.12&&Math.abs(a)<Math.PI*0.88;}
+  cv.style.cursor=hot?'pointer':'default';
+});
+
+function flash(id){
+  const el=document.getElementById(id);el.style.border='1.5px solid #378ADD';
+  setTimeout(()=>{el.style.border='1px solid var(--border)';},1000);
+}
+function unlockQ(id){
+  const el=document.getElementById(id);
+  if(el&&el.classList.contains('locked')){el.classList.remove('locked');el.classList.add('unlocked');}
+}
+function updateQuestions(){
+  const t=total||1,pS=counts[0]/t;
+  if(!q1done&&total>=20&&pS>0.8){q1done=true;unlockQ('q1');}
+  if(!q2done&&(counts[1]+counts[2])>=2){q2done=true;unlockQ('q2');}
+  if(!q3done&&counts[3]>=1){q3done=true;unlockQ('q3');}
+  if(!q4done&&trialCount>=2){q4done=true;unlockQ('q4');}
+}
+
+function rutherfordCat(){
+  const r=Math.random(),s=nucR/5;
+  const pB=0.0013*s*s,pL=0.004*s*s,pS=0.016*s;
+  if(r<pB)return 3;if(r<pB+pL)return 2;if(r<pB+pL+pS)return 1;return 0;
+}
+function angleForCat(c){
+  if(c===0)return Math.random()*Math.PI/180;
+  if(c===1)return(1+Math.random()*9)*Math.PI/180;
+  if(c===2)return(10+Math.random()*80)*Math.PI/180;
+  return(140+Math.random()*40)*Math.PI/180;
+}
+function spawnP(){
+  const py=NY+(Math.random()-0.5)*H*0.70;
+  const cat=rutherfordCat(),a=angleForCat(cat),sign=(py-NY)>=0?1:-1,spd=W*0.006;
+  let vx,vy;
+  if(cat===3){vx=-spd;vy=(Math.random()-0.5)*0.4;}
+  else{vx=spd*Math.cos(a);vy=spd*Math.sin(a)*sign;}
+  return{x:SRC_X+LEAD_ZONE.w/2,y:py,cat,vx,vy,phase:'approach',trail:[],done:false};
+}
+function stepP(p){
+  const spd=W*0.006;
+  if(p.phase==='approach'){
+    p.x+=spd;p.trail.push({x:p.x,y:p.y});if(p.trail.length>70)p.trail.shift();
+    if(p.x>=FOIL_X)p.phase='out';
+  }else{
+    p.x+=p.vx;p.y+=p.vy;p.trail.push({x:p.x,y:p.y});if(p.trail.length>70)p.trail.shift();
+    if(p.x>W+20||p.x<-20||p.y<-20||p.y>H+20){p.done=true;counts[p.cat]++;total++;updateBars();updateQuestions();}
+  }
+}
+
+const TC=['#378ADD','#1D9E75','#BA7517','#D85A30'];
+function drawAlpha(x,y,alpha){
+  const nr=Math.max(2,W*0.004);cx.save();cx.globalAlpha=alpha;
+  [{dx:-nr*0.72,dy:-nr*0.72,p:true},{dx:nr*0.72,dy:-nr*0.72,p:false},
+   {dx:-nr*0.72,dy:nr*0.72,p:false},{dx:nr*0.72,dy:nr*0.72,p:true}].forEach(q=>{
+    cx.beginPath();cx.arc(x+q.dx,y+q.dy,nr,0,Math.PI*2);
+    cx.fillStyle=q.p?'#cc2020':'#cc9428';cx.fill();
+    cx.strokeStyle='rgba(255,255,255,0.15)';cx.lineWidth=0.4;cx.stroke();
+  });cx.restore();
+}
+function drawBg(){
+  cx.fillStyle='#0d0d1f';cx.fillRect(0,0,W,H);
+  stars.forEach(s=>{cx.fillStyle=`rgba(255,255,255,${s.a})`;cx.beginPath();cx.arc(s.x,s.y,0.8,0,Math.PI*2);cx.fill();});
+}
+function drawFoil(){
+  const fw=Math.max(7,W*0.016),fh=H*0.72,fy=(H-fh)/2;
+  cx.fillStyle='rgba(218,165,32,0.88)';cx.beginPath();cx.roundRect(FOIL_X-fw/2,fy,fw,fh,3);cx.fill();
+  cx.strokeStyle='rgba(255,220,80,0.4)';cx.lineWidth=0.5;cx.stroke();
+  const fs=Math.max(10,W*0.018),labelX=FOIL_X+DET_R+Math.max(14,W*0.025),labelY=Math.round(H*0.12);
+  cx.save();
+  cx.strokeStyle='rgba(255,215,80,0.6)';cx.lineWidth=1.2;cx.setLineDash([4,3]);
+  cx.beginPath();cx.moveTo(labelX,labelY);cx.lineTo(FOIL_X+fw/2+4,fy+14);cx.stroke();cx.setLineDash([]);
+  cx.fillStyle='rgba(218,165,32,0.9)';cx.beginPath();
+  cx.moveTo(FOIL_X+fw/2+4,fy+14);cx.lineTo(FOIL_X+fw/2-1,fy+6);cx.lineTo(FOIL_X+fw/2+9,fy+6);cx.closePath();cx.fill();
+  cx.fillStyle='rgba(255,215,80,0.95)';cx.font=`bold ${fs}px sans-serif`;cx.textAlign='left';
+  cx.fillText('Gold foil (Au)',labelX,labelY-3);cx.restore();
+}
+function drawDetector(){
+  cx.save();const lw=Math.max(5,DET_R*0.046);
+  cx.strokeStyle='rgba(80,160,255,0.72)';cx.lineWidth=lw;cx.lineCap='butt';
+  cx.beginPath();cx.arc(FOIL_X,NY,DET_R,-Math.PI*0.88,Math.PI*0.88);cx.stroke();
+  cx.strokeStyle='rgba(80,160,255,0.16)';cx.lineWidth=lw*2.2;
+  cx.beginPath();cx.arc(FOIL_X,NY,DET_R,-Math.PI*0.88,Math.PI*0.88);cx.stroke();
+  const fs=Math.max(10,W*0.018);
+  cx.fillStyle='rgba(100,175,255,0.75)';cx.font=`${fs}px sans-serif`;cx.textAlign='left';
+  cx.fillText('Detector',FOIL_X+DET_R+lw+8,NY-fs*0.5);cx.fillText('screen',FOIL_X+DET_R+lw+8,NY+fs*0.9);cx.restore();
+}
+function drawSource(){
+  const lz=LEAD_ZONE;
+  cx.fillStyle='#222235';cx.fillRect(lz.x,lz.y,lz.w,lz.h);
+  cx.strokeStyle='rgba(150,150,200,0.3)';cx.lineWidth=1;cx.strokeRect(lz.x,lz.y,lz.w,lz.h);
+  cx.fillStyle='#2a2a45';cx.fillRect(lz.x+4,lz.y+4,lz.w-8,lz.h-8);
+  const sw=Math.max(5,lz.w*0.17);cx.fillStyle='#0d0d1f';cx.fillRect(SRC_X-sw/2,lz.y+4,sw,lz.h-8);
+  const rr=Math.max(4,lz.w*0.13);cx.fillStyle='rgba(255,245,150,0.95)';cx.beginPath();cx.arc(SRC_X,NY,rr,0,Math.PI*2);cx.fill();
+  const fs=Math.max(10,W*0.018);
+  cx.fillStyle='rgba(180,180,220,0.8)';cx.font=`${fs}px sans-serif`;cx.textAlign='center';
+  cx.fillText('Radium',SRC_X,lz.y+lz.h+fs+3);cx.fillText('(lead block)',SRC_X,lz.y+lz.h+fs*2+5);
+  cx.strokeStyle='rgba(80,120,255,0.3)';cx.lineWidth=1;cx.setLineDash([3,3]);
+  cx.strokeRect(lz.x-2,lz.y-2,lz.w+4,lz.h+4);cx.setLineDash([]);
+}
+function drawSceneBase(){drawBg();drawFoil();drawDetector();drawSource();}
+function drawStatic(){drawSceneBase();}
+function drawParticles(alpha){
+  for(const p of particles){
+    if(p.trail.length<2)continue;
+    cx.save();cx.strokeStyle=TC[p.cat];cx.lineWidth=1.1;cx.globalAlpha=0.42*alpha;
+    cx.beginPath();cx.moveTo(p.trail[0].x,p.trail[0].y);
+    for(let i=1;i<p.trail.length;i++)cx.lineTo(p.trail[i].x,p.trail[i].y);
+    cx.stroke();cx.restore();
+  }
+  for(const p of particles){if(!p.done)drawAlpha(p.x,p.y,alpha);}
+}
+function mainLoop(){
+  const elapsed=performance.now()-trialStart;
+  if(simState==='firing'){
+    drawSceneBase();drawParticles(1.0);
+    particles=particles.filter(q=>!q.done);for(const p of particles)stepP(p);
+    spawnAcc+=13/60;while(spawnAcc>=1&&elapsed<TRIAL){particles.push(spawnP());spawnAcc-=1;}
+    timerTick(elapsed);
+    if(elapsed>=TRIAL){simState='draining';drainStart=performance.now();document.getElementById('timerBar').style.width='100%';document.getElementById('timerLabel').textContent='0.0s';}
+    animId=requestAnimationFrame(mainLoop);
+  }else if(simState==='draining'){
+    drawSceneBase();drawParticles(1.0);
+    particles=particles.filter(q=>!q.done);for(const p of particles)stepP(p);
+    if(particles.length===0){simState='fading';fadeAlpha=1.0;drainStart=performance.now();}
+    animId=requestAnimationFrame(mainLoop);
+  }else if(simState==='fading'){
+    const prog=Math.min((performance.now()-drainStart)/FADE_DURATION,1);
+    fadeAlpha=1.0-prog;drawSceneBase();if(fadeAlpha>0)drawParticles(fadeAlpha);
+    if(prog<1){animId=requestAnimationFrame(mainLoop);}
+    else{simState='idle';animId=null;drawStatic();document.getElementById('btnFire').disabled=false;document.getElementById('btnFire').textContent='Fire beam';}
+  }
+}
+function timerTick(elapsed){
+  const f=Math.min(elapsed/TRIAL,1);
+  document.getElementById('timerBar').style.width=(f*100)+'%';
+  document.getElementById('timerLabel').textContent=Math.max(0,5-elapsed/1000).toFixed(1)+'s';
+}
+function startTrial(){
+  particles=[];spawnAcc=0;simState='firing';trialStart=performance.now();trialCount++;
+  document.getElementById('btnFire').disabled=true;document.getElementById('btnFire').textContent='Firing…';
+  drawSceneBase();animId=requestAnimationFrame(mainLoop);
+}
+function updateBars(){
+  const t=total||1;
+  ['0','1','2','3'].forEach((id,i)=>{
+    const pct=Math.round(counts[i]/t*100);
+    document.getElementById('p'+id).textContent=pct+'%';
+    document.getElementById('b'+id).style.width=Math.max(pct,counts[i]>0?3:0)+'%';
+  });
+  document.getElementById('totLbl').textContent='Total: '+total+' particles';
+}
+function resetAll(){
+  cancelAnimationFrame(animId);animId=null;simState='idle';
+  particles=[];counts=[0,0,0,0];total=0;spawnAcc=0;fadeAlpha=1.0;
+  trialCount=0;q1done=false;q2done=false;q3done=false;q4done=false;
+  document.getElementById('btnFire').disabled=false;document.getElementById('btnFire').textContent='Fire beam';
+  document.getElementById('timerBar').style.width='0%';document.getElementById('timerLabel').textContent='5.0s';
+  document.getElementById('totLbl').textContent='Total: 0 particles';
+  ['0','1','2','3'].forEach(id=>{document.getElementById('p'+id).textContent='0%';document.getElementById('b'+id).style.width='0%';});
+  ['q1','q2','q3','q4'].forEach(id=>{const el=document.getElementById(id);el.classList.remove('unlocked');el.classList.add('locked');});
+  drawStatic();
+}
+sizeCanvas();
+resetAll();
+</script>

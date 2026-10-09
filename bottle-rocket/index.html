@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bottle Rocket Lab</title>
+<!--
+  Grade 6 · Criterion B and C training (Cesar, 2026-10-08).
+  One offline file: no network, no libraries, nothing saved. Students change the
+  water in a 2 L bottle rocket (0-1000 mL), read the highest point off a scale,
+  build a results table, type their means (checked), and place a bar graph (checked).
+  Bar graphs only: the Grade 6 unit never asks for line or scatter graphs.
+-->
+<style>
+  :root {
+    --ink: #1e293b; --muted: #64748b; --line: #cbd5e1; --bg: #f0f9ff; --card: #ffffff;
+    --blue: #2563eb; --blue-soft: #dbeafe; --green: #16a34a; --green-soft: #dcfce7;
+    --red: #dc2626; --red-soft: #fee2e2; --amber: #b45309; --amber-soft: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+         color: var(--ink); background: var(--bg); }
+  header { background: linear-gradient(90deg, #1d4ed8, #0ea5e9); color: #fff; text-align: center; padding: 18px 12px; }
+  header h1 { margin: 0; font-size: 1.7rem; }
+  header p { margin: 6px 0 0; opacity: .9; }
+  .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
+  nav { display: flex; background: #fff; border-bottom: 1px solid var(--line); }
+  nav button { flex: 1; padding: 14px 6px; border: 0; background: none; font: inherit; font-weight: 700;
+               color: var(--muted); border-bottom: 4px solid transparent; cursor: pointer; }
+  nav button.on { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab { display: none; } .tab.on { display: block; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  h2 { margin: 0 0 10px; font-size: 1.15rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .9rem; }
+  canvas { display: block; width: 100%; touch-action: none; }
+  .btn { border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-blue { background: var(--blue); color: #fff; } .btn-green { background: var(--green); color: #fff; }
+  .btn-grey { background: #e2e8f0; color: var(--ink); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .big { font-size: 1.6rem; font-weight: 800; color: var(--blue); }
+  input[type=range] { width: 100%; }
+  .num { width: 6rem; padding: 8px; font: inherit; font-size: 1.1rem; border: 2px solid var(--line); border-radius: 8px; text-align: center; }
+  .same { background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; }
+  .same li { margin: 2px 0; }
+  .msg { min-height: 1.4em; font-weight: 600; }
+  .ok { color: var(--green); } .bad { color: var(--red); } .info { color: var(--blue); } .warn { color: var(--amber); }
+  /* the results table, as a scientist lays it out */
+  .sci { border-collapse: collapse; margin: 0 auto; }
+  .sci th, .sci td { border: 1px solid #94a3b8; padding: 8px 12px; text-align: center; }
+  .sci th { background: #f1f5f9; }
+  .sci td { font-variant-numeric: tabular-nums; min-width: 4.5rem; }
+  .sci td.mean { background: #fffbeb; }
+  .sci td.m-ok { background: var(--green-soft); } .sci td.m-dp { background: var(--amber-soft); } .sci td.m-bad { background: var(--red-soft); }
+  .mean-in { width: 4.6rem; text-align: center; padding: 3px; border: 1px solid #94a3b8; border-radius: 6px; font: inherit; }
+  @media (max-width: 600px) { .sci th, .sci td { padding: 5px 5px; font-size: .85rem; min-width: 2.8rem; } .mean-in { width: 3.4rem; } }
+  ul.fb { list-style: none; padding: 0; margin: 12px 0 0; } ul.fb li { margin: 3px 0; }
+  .lock { position: relative; }
+  .lock .cover { position: absolute; inset: 0; background: rgba(248,250,252,.96); display: flex; flex-direction: column;
+                 align-items: center; justify-content: center; text-align: center; border-radius: 12px; padding: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🚀 Bottle Rocket Lab</h1>
+  <p>How does the amount of water change how high a bottle rocket goes?</p>
+</header>
+<nav>
+  <button id="t-launch" onclick="tab('launch')">1. Launch</button>
+  <button id="t-table" onclick="tab('table')">2. Results table</button>
+  <button id="t-graph" onclick="tab('graph')">3. Bar graph</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- LAUNCH -->
+  <section id="launch" class="tab">
+    <div class="grid">
+      <div class="card">
+        <canvas id="scene" aria-label="A bottle rocket on a launch pad next to a height scale in metres"></canvas>
+      </div>
+      <div class="card">
+        <h2>Water in the bottle</h2>
+        <div class="row" style="justify-content:space-between">
+          <span class="muted">Choose the amount of water:</span>
+          <span class="big"><span id="vol-out">300</span> mL</span>
+        </div>
+        <input type="range" id="vol" min="0" max="1000" step="100" value="300" aria-label="Water in the bottle, millilitres">
+        <div class="row small muted" style="justify-content:space-between"><span>0 mL</span><span>500 mL</span><span>1000 mL</span></div>
+
+        <div class="same small" style="margin-top:12px">
+          <b>Kept the same every launch:</b>
+          <ul style="margin:6px 0 0; padding-left:18px">
+            <li>the same 2-litre bottle, fins and nose</li>
+            <li>pumped to the same pressure (20 pumps)</li>
+            <li>launched straight up</li>
+          </ul>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-blue" id="launch-btn" onclick="launch()">🚀 Launch!</button>
+          <span class="small muted">Launch number <b id="launch-n">1</b></span>
+        </div>
+
+        <div style="margin-top:16px">
+          <h2>Read the height</h2>
+          <p class="small muted" style="margin-top:0">After the launch, look at the <b style="color:#dc2626">red flag</b> on the scale. Read the highest point <b>to the nearest metre</b> and type it here.</p>
+          <div class="row">
+            <input class="num" id="reading" inputmode="decimal" disabled aria-label="Height in metres">
+            <span>m</span>
+            <button class="btn btn-green" id="record-btn" onclick="record()" disabled>Record my reading</button>
+          </div>
+          <p class="msg" id="read-msg"></p>
+        </div>
+        <button class="btn btn-grey small" onclick="undo()">↶ Undo my last reading</button>
+        <button class="btn btn-grey small" onclick="resetAll()">Start again (deletes all data)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS TABLE -->
+  <section id="table" class="tab">
+    <div class="card">
+      <h2>Results table</h2>
+      <p class="small muted">Each launch goes in the row for its amount of water. Do <b>at least 3 launches</b> for each amount.
+        Then work out the <b>mean</b> for each row and type it in, <b>rounded to 1 decimal place</b> (like 24.3).</p>
+      <div style="overflow-x:auto"><table class="sci" id="results"></table></div>
+      <p id="empty" class="muted" style="text-align:center">No readings yet. Go to <b>1. Launch</b>.</p>
+      <div class="row" style="justify-content:center; margin-top:12px">
+        <button class="btn btn-green" onclick="checkMeans()">✔ Check my means</button>
+      </div>
+      <ul class="fb" id="mean-fb" style="max-width:560px; margin-left:auto; margin-right:auto"></ul>
+    </div>
+  </section>
+
+  <!-- BAR GRAPH -->
+  <section id="graph" class="tab">
+    <div class="card">
+      <h2>Build your bar graph</h2>
+      <p class="small muted">Make <b>one bar for each amount of water</b>. The height of the bar is your <b>mean</b> from the table.
+        Click or drag above an amount to set its bar. Then press <b>Check my bars</b>.</p>
+      <canvas id="plot" aria-label="Empty bar graph: water in the bottle against mean height"></canvas>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-green" onclick="checkBars()">✔ Check my bars</button>
+        <button class="btn btn-grey" onclick="clearBars()">Clear my bars</button>
+        <button class="btn btn-grey" id="show-btn" onclick="toggleAnswer()" disabled>🔒 Show the computer's graph</button>
+      </div>
+      <ul class="fb" id="bar-fb"></ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// =====================================================================
+// The model
+// =====================================================================
+// Height peaks with about 600 mL of water: too little water gives little push,
+// too much makes the rocket too heavy. Smooth and symmetric on purpose, so an
+// 11-year-old can describe it: about 7 m empty, 32 m at 600 mL, 14 m at 1000 mL.
+function modelHeight(mL) {
+  return 5 + 27 * Math.exp(-Math.pow((mL - 600) / 380, 2));
+}
+// Each launch varies by up to +/-8 % (wind, how tight the cork is, the pump).
+const SPREAD = 0.08;
+// About 1 launch in 15 leaks at the nozzle and goes much lower: a "strange
+// result" to spot in Criterion C. At most ONE per amount of water, so the odd
+// one out is always the odd one out (two leaks in a row of three made the
+// normal launch look strange, found in testing 2026-10-08). 0 switches it off.
+const LEAK_CHANCE = 1 / 15;
+const LEAK_FACTOR = 0.6;
+// Checks: a reading within 1 m of the flag; a mean within 0.1 of the true mean
+// rounded to 1 d.p.; a bar within 1 m of the true mean (about 2.5 % of the axis).
+const READ_TOL = 1.0, MEAN_TOL = 0.1, BAR_TOL = 1.0;
+
+let volume = 300;
+let leaked = {};         // leaked["600"] = true once that amount has had its leak
+let launchCount = 0;
+let flight = null;       // {h, t, phase} while flying
+let flagH = null;        // height of the last launch's flag, shown until the next launch
+let pending = null;      // that height, until the student records a reading for it
+let pendingVol = null;   // the water that launch used (the slider may have moved since)
+let readings = {};       // readings["300"] = [21, 23, 22]
+let history = [];        // volumes in the order recorded, for undo
+let means = {};          // means["300"] = what the student typed
+let meanState = {};      // 'ok' | 'dp' | 'bad'
+let bars = {};           // bars["300"] = student's bar height
+let barState = {};       // 'ok' | 'high' | 'low'
+let answerOpen = false, graphDone = false;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// =====================================================================
+// Tabs
+// =====================================================================
+function tab(id) {
+  for (const t of ['launch', 'table', 'graph']) {
+    document.getElementById(t).classList.toggle('on', t === id);
+    document.getElementById('t-' + t).classList.toggle('on', t === id);
+  }
+  if (id === 'launch') sizeScene();
+  if (id === 'graph') sizePlot();
+  if (id === 'table') renderTable();
+}
+
+// =====================================================================
+// Launch scene
+// =====================================================================
+const SW = 360, SH = 600;
+const GROUND = 560, TOP_M = 40, PX_PER_M = (GROUND - 40) / TOP_M;   // 13 px per metre
+const ROCKET_X = 230, SCALE_X = 70;
+const scene = document.getElementById('scene'), sc = scene.getContext('2d');
+let sceneK = 1;
+const yOf = m => GROUND - m * PX_PER_M;
+
+function sizeScene() {
+  const w = scene.parentElement.clientWidth - 32;
+  if (w <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = Math.min(w, 420);
+  scene.style.width = cssW + 'px'; scene.style.height = cssW * SH / SW + 'px';
+  scene.style.margin = '0 auto';
+  scene.width = Math.round(cssW * dpr); scene.height = Math.round(cssW * SH / SW * dpr);
+  sceneK = cssW / SW * dpr;
+  drawScene();
+}
+
+let spray = [];
+function drawRocket(yBase, waterFrac, chute) {
+  const x = ROCKET_X, w = 26, h = 74;
+  // parachute on the way down
+  if (chute) {
+    sc.fillStyle = '#f97316';
+    sc.beginPath(); sc.arc(x, yBase - h - 46, 30, Math.PI, 0); sc.fill();
+    sc.strokeStyle = '#94a3b8'; sc.lineWidth = 1;
+    for (const dx of [-28, -10, 10, 28]) { sc.beginPath(); sc.moveTo(x + dx, yBase - h - 46); sc.lineTo(x, yBase - h - 4); sc.stroke(); }
+  }
+  // nose cone
+  sc.fillStyle = '#ef4444';
+  sc.beginPath(); sc.moveTo(x - w / 2, yBase - h); sc.lineTo(x, yBase - h - 24); sc.lineTo(x + w / 2, yBase - h); sc.fill();
+  // bottle
+  sc.fillStyle = 'rgba(226, 232, 240, 0.9)'; sc.strokeStyle = '#64748b'; sc.lineWidth = 1.5;
+  sc.beginPath(); sc.roundRect(x - w / 2, yBase - h, w, h, 6); sc.fill(); sc.stroke();
+  // water sits at the nozzle end (the bottle is upside down)
+  if (waterFrac > 0) {
+    const wh = (h - 6) * waterFrac;
+    sc.fillStyle = '#38bdf8';
+    sc.beginPath(); sc.roundRect(x - w / 2 + 2, yBase - 3 - wh, w - 4, wh, 4); sc.fill();
+  }
+  // nozzle and fins
+  sc.fillStyle = '#334155'; sc.fillRect(x - 4, yBase, 8, 6);
+  sc.fillStyle = '#2563eb';
+  sc.beginPath(); sc.moveTo(x - w / 2, yBase - 22); sc.lineTo(x - w / 2 - 14, yBase + 4); sc.lineTo(x - w / 2, yBase); sc.fill();
+  sc.beginPath(); sc.moveTo(x + w / 2, yBase - 22); sc.lineTo(x + w / 2 + 14, yBase + 4); sc.lineTo(x + w / 2, yBase); sc.fill();
+}
+
+function drawScene() {
+  sc.setTransform(sceneK, 0, 0, sceneK, 0, 0);
+  // sky and ground
+  const g = sc.createLinearGradient(0, 0, 0, GROUND);
+  g.addColorStop(0, '#bfdbfe'); g.addColorStop(1, '#eff6ff');
+  sc.fillStyle = g; sc.fillRect(0, 0, SW, GROUND);
+  sc.fillStyle = '#86efac'; sc.fillRect(0, GROUND, SW, SH - GROUND);
+  // height scale: a line every metre, longer every 5 m, labelled every 5 m
+  sc.fillStyle = '#fff'; sc.fillRect(SCALE_X - 4, yOf(TOP_M) - 6, 16, GROUND - yOf(TOP_M) + 6);
+  sc.strokeStyle = '#1e293b'; sc.lineWidth = 2;
+  sc.beginPath(); sc.moveTo(SCALE_X, GROUND); sc.lineTo(SCALE_X, yOf(TOP_M)); sc.stroke();
+  sc.font = '600 12px system-ui, sans-serif'; sc.textAlign = 'right'; sc.textBaseline = 'middle'; sc.fillStyle = '#1e293b';
+  for (let m = 0; m <= TOP_M; m++) {
+    const five = m % 5 === 0;
+    sc.lineWidth = five ? 2 : 1;
+    sc.beginPath(); sc.moveTo(SCALE_X, yOf(m)); sc.lineTo(SCALE_X + (five ? 12 : 6), yOf(m)); sc.stroke();
+    if (five) sc.fillText(m, SCALE_X - 8, yOf(m));
+  }
+  sc.save(); sc.translate(16, yOf(TOP_M / 2)); sc.rotate(-Math.PI / 2); sc.textAlign = 'center';
+  sc.fillText('Height (m)', 0, 0); sc.restore();
+  // launch pad
+  sc.fillStyle = '#475569'; sc.fillRect(ROCKET_X - 30, GROUND - 4, 60, 8);
+
+  // the red flag at the highest point, once reached
+  const flagM = flight && flight.phase === 'up' ? null : flagH;
+  if (flagM !== null) {
+    const y = yOf(flagM);
+    sc.strokeStyle = '#dc2626'; sc.lineWidth = 1.5; sc.setLineDash([5, 4]);
+    sc.beginPath(); sc.moveTo(SCALE_X, y); sc.lineTo(ROCKET_X - 20, y); sc.stroke(); sc.setLineDash([]);
+    sc.fillStyle = '#dc2626';
+    sc.beginPath(); sc.moveTo(SCALE_X + 1, y); sc.lineTo(SCALE_X + 16, y - 7); sc.lineTo(SCALE_X + 16, y + 7); sc.fill();
+    sc.font = '700 11px system-ui, sans-serif'; sc.textAlign = 'left';
+    sc.fillText('highest point', SCALE_X + 20, y - 10);
+  }
+
+  // rocket
+  if (flight) {
+    const yb = yOf(flight.y);
+    drawRocket(yb, flight.phase === 'up' ? flight.water : 0, flight.phase === 'down');
+  } else {
+    drawRocket(GROUND - 6, volume / 2000, false);
+  }
+  // water spray while thrusting
+  for (const p of spray) { sc.fillStyle = `rgba(56, 189, 248, ${p.a})`; sc.beginPath(); sc.arc(p.x, p.y, 3, 0, Math.PI * 2); sc.fill(); }
+}
+
+// =====================================================================
+// Launching and reading
+// =====================================================================
+const G = 9.8;
+let lastT = null;
+
+function launch() {
+  if (flight) return;
+  launchCount++;
+  let h = modelHeight(volume) * (1 + (Math.random() * 2 - 1) * SPREAD);
+  if (!leaked[volume] && Math.random() < LEAK_CHANCE) { h *= LEAK_FACTOR; leaked[volume] = true; }
+  h = Math.min(h, TOP_M - 1);
+  flagH = null; pending = null; pendingVol = volume;
+  flight = { h, y: 0, t: 0, phase: 'up', v0: Math.sqrt(2 * G * h), water: volume / 2000 };
+  setControls(true);
+  say('', '');
+  if (reduceMotion) { flight.phase = 'done'; endFlight(); return; }
+  lastT = null; requestAnimationFrame(fly);
+}
+
+function fly(t) {
+  if (!flight) return;
+  const dt = lastT === null ? 0 : Math.min(0.05, (t - lastT) / 1000); lastT = t;
+  flight.t += dt;
+  if (flight.phase === 'up') {
+    flight.y = flight.v0 * flight.t - G * flight.t * flight.t / 2;
+    flight.water = Math.max(0, flight.water - dt * 1.5);
+    if (flight.t < 0.35 && volume > 0) for (let i = 0; i < 4; i++) spray.push({ x: ROCKET_X + (Math.random() - .5) * 10, y: yOf(flight.y) + 8, vy: 120 + Math.random() * 80, vx: (Math.random() - .5) * 60, a: .9 });
+    if (flight.t >= flight.v0 / G) { flight.phase = 'down'; flight.y = flight.h; flagH = pending = flight.h; enableReading(); }
+  } else if (flight.phase === 'down') {
+    flight.y = Math.max(0, flight.y - 9 * dt);   // gently, under its parachute
+    if (flight.y <= 0) { endFlight(); return; }
+  }
+  for (const p of spray) { p.y += p.vy * dt; p.x += p.vx * dt; p.a -= dt * 1.2; }
+  spray = spray.filter(p => p.a > 0 && p.y < GROUND);
+  drawScene();
+  requestAnimationFrame(fly);
+}
+
+function endFlight() {
+  if (flight.phase === 'done') flagH = pending = flight.h;   // reduced motion: no flight shown
+  flight = null; spray = [];
+  document.getElementById('launch-btn').disabled = false;
+  document.getElementById('vol').disabled = false;
+  if (pending !== null) enableReading();
+  drawScene();
+}
+
+function enableReading() {
+  document.getElementById('reading').disabled = false;
+  document.getElementById('record-btn').disabled = false;
+  document.getElementById('reading').focus();
+}
+
+function setControls(flying) {
+  document.getElementById('launch-btn').disabled = flying;
+  document.getElementById('vol').disabled = flying;
+  document.getElementById('reading').disabled = true;
+  document.getElementById('record-btn').disabled = true;
+  document.getElementById('reading').value = '';
+}
+
+function say(text, cls) { const m = document.getElementById('read-msg'); m.textContent = text; m.className = 'msg ' + cls; }
+
+function record() {
+  const h = pending;
+  if (h === null) return;
+  const raw = document.getElementById('reading').value.trim().replace(',', '.');
+  const x = Number(raw);
+  if (raw === '' || !isFinite(x)) { say('Type the height you read, in metres.', 'info'); return; }
+  if (Math.abs(x - h) > READ_TOL + 1e-9) { say('Look again: follow the red flag across to the scale, then count the small lines.', 'bad'); return; }
+  const key = String(pendingVol);
+  (readings[key] = readings[key] || []).push(x);
+  history.push(key);
+  delete meanState[key]; delete barState[key]; graphDone = false; updateShow();
+  pending = null;
+  document.getElementById('reading').value = '';
+  document.getElementById('reading').disabled = true;
+  document.getElementById('record-btn').disabled = true;
+  document.getElementById('launch-n').textContent = launchCount + 1;
+  say(`Recorded: ${key} mL → ${x} m (launch ${readings[key].length} for this amount).`, 'ok');
+  if (!flight) drawScene();
+}
+
+function undo() {
+  const key = history.pop();
+  if (!key) { say('Nothing to undo.', 'info'); return; }
+  const v = readings[key].pop();
+  if (!readings[key].length) delete readings[key];
+  delete meanState[key]; delete barState[key]; graphDone = false; updateShow();
+  say(`Removed your last reading (${key} mL → ${v} m).`, 'info');
+}
+
+function resetAll() {
+  if (Object.keys(readings).length && !confirm('Delete ALL your readings and start again?')) return;
+  readings = {}; history = []; leaked = {}; means = {}; meanState = {}; bars = {}; barState = {};
+  graphDone = false; answerOpen = false; launchCount = 0; flagH = null; pending = null; flight = null;
+  document.getElementById('launch-n').textContent = 1;
+  setControls(false); say('', ''); updateShow(); drawScene();
+}
+
+document.getElementById('vol').addEventListener('input', e => {
+  volume = Number(e.target.value);
+  document.getElementById('vol-out').textContent = volume;
+  if (!flight) drawScene();
+});
+document.getElementById('reading').addEventListener('keydown', e => { if (e.key === 'Enter') record(); });
+
+// =====================================================================
+// Results table, with typed means
+// =====================================================================
+const vols = () => Object.keys(readings).map(Number).sort((a, b) => a - b).map(String);
+const trueMean = k => readings[k].reduce((a, b) => a + b, 0) / readings[k].length;
+
+function renderTable() {
+  const t = document.getElementById('results'), ks = vols();
+  document.getElementById('empty').style.display = ks.length ? 'none' : 'block';
+  if (!ks.length) { t.innerHTML = ''; return; }
+  const n = Math.max(3, ...ks.map(k => readings[k].length));
+  let h = `<thead><tr><th rowspan="2">Water in the<br>bottle (mL)</th><th colspan="${n + 1}">Highest point (m)</th></tr><tr>`;
+  for (let i = 1; i <= n; i++) h += `<th>Launch ${i}</th>`;
+  h += '<th>Mean</th></tr></thead><tbody>';
+  for (const k of ks) {
+    h += `<tr><td><b>${k}</b></td>`;
+    for (let i = 0; i < n; i++) h += `<td>${readings[k][i] === undefined ? '' : readings[k][i]}</td>`;
+    const st = meanState[k], mark = st === 'ok' ? ' ✓' : st === 'dp' ? ' !' : st === 'bad' ? ' ✗' : '';
+    h += `<td class="mean ${st ? 'm-' + st : ''}"><input class="mean-in" data-k="${k}" inputmode="decimal" aria-label="Mean for ${k} mL" value="${(means[k] || '').replace(/"/g, '&quot;')}"><b>${mark}</b></td></tr>`;
+  }
+  t.innerHTML = h + '</tbody>';
+  t.querySelectorAll('.mean-in').forEach(inp => inp.addEventListener('input', () => {
+    means[inp.dataset.k] = inp.value; delete meanState[inp.dataset.k];
+    inp.parentElement.className = 'mean'; inp.nextElementSibling.textContent = '';
+  }));
+}
+
+function checkMeans() {
+  const ks = vols(), fb = document.getElementById('mean-fb'), items = [];
+  if (!ks.length) { fb.innerHTML = '<li class="info">ℹ Record some readings first.</li>'; return; }
+  let all = true;
+  for (const k of ks) {
+    const raw = (means[k] || '').trim().replace(',', '.');
+    delete meanState[k];
+    if (raw === '') { items.push(['muted', `• ${k} mL: no mean typed yet.`]); all = false; continue; }
+    const x = Number(raw);
+    if (!isFinite(x)) { meanState[k] = 'bad'; all = false; items.push(['bad', `✗ ${k} mL: "${raw}" is not a number.`]); continue; }
+    const target = Math.round(trueMean(k) * 10) / 10;
+    if (Math.abs(x - target) <= MEAN_TOL + 1e-9) {
+      const dp = raw.includes('.') ? raw.split('.')[1].length : 0;
+      if (dp === 1) { meanState[k] = 'ok'; items.push(['ok', `✓ ${k} mL: correct.`]); }
+      else { meanState[k] = 'dp'; all = false; items.push(['warn', `! ${k} mL: right value — now round it to 1 decimal place (like 24.3).`]); }
+    } else {
+      meanState[k] = 'bad'; all = false;
+      items.push(['bad', `✗ ${k} mL: not right. Add up the launches in this row, then divide by how many launches there are.`]);
+    }
+  }
+  if (ks.some(k => readings[k].length < 3)) items.push(['info', 'ℹ Some rows have fewer than 3 launches. Do more launches to make your results more reliable.']);
+  if (all) items.unshift(['ok', '★ All your means are correct! Now build your bar graph.']);
+  renderTable();
+  fb.innerHTML = items.map(([c, t]) => `<li class="${c}">${t}</li>`).join('');
+}
+
+// =====================================================================
+// Bar graph: the student places each bar; the app checks it
+// =====================================================================
+const PW = 640, PH = 420, PM = { l: 64, r: 16, t: 16, b: 64 }, YMAX = 40;
+const plot = document.getElementById('plot'), pc = plot.getContext('2d');
+let plotK = 1, plotCss = 1;
+const py = v => PH - PM.b - v / YMAX * (PH - PM.t - PM.b);
+const fromPy = Y => (PH - PM.b - Y) / (PH - PM.t - PM.b) * YMAX;
+
+function slots() {
+  const ks = vols(), n = Math.max(ks.length, 1), w = (PW - PM.l - PM.r) / n;
+  return ks.map((k, i) => ({ k, x0: PM.l + i * w, w, cx: PM.l + (i + .5) * w }));
+}
+
+function sizePlot() {
+  const w = plot.parentElement.clientWidth - 32;
+  if (w <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  plot.style.width = w + 'px'; plot.style.height = w * PH / PW + 'px';
+  plot.width = Math.round(w * dpr); plot.height = Math.round(w * PH / PW * dpr);
+  plotK = w / PW * dpr; plotCss = w / PW;
+  drawPlot();
+}
+
+function drawPlot() {
+  pc.setTransform(plotK, 0, 0, plotK, 0, 0);
+  pc.clearRect(0, 0, PW, PH);
+  for (let v = 0; v <= YMAX; v++) {
+    const five = v % 5 === 0;
+    pc.strokeStyle = five ? '#94a3b8' : '#e2e8f0'; pc.lineWidth = five ? 1 : .7;
+    pc.beginPath(); pc.moveTo(PM.l, py(v)); pc.lineTo(PW - PM.r, py(v)); pc.stroke();
+  }
+  pc.strokeStyle = '#1e293b'; pc.lineWidth = 2;
+  pc.beginPath(); pc.moveTo(PM.l, PM.t); pc.lineTo(PM.l, py(0)); pc.lineTo(PW - PM.r, py(0)); pc.stroke();
+  pc.fillStyle = '#334155'; pc.font = '500 13px system-ui, sans-serif'; pc.textAlign = 'right'; pc.textBaseline = 'middle';
+  for (let v = 0; v <= YMAX; v += 5) pc.fillText(v, PM.l - 8, py(v));
+  pc.font = '700 14px system-ui, sans-serif'; pc.textAlign = 'center'; pc.textBaseline = 'alphabetic';
+  pc.fillText('Water in the bottle (mL)', (PM.l + PW - PM.r) / 2, PH - 12);
+  pc.save(); pc.translate(18, py(YMAX / 2)); pc.rotate(-Math.PI / 2); pc.fillText('Mean highest point (m)', 0, 0); pc.restore();
+  const ss = slots();
+  if (!ss.length) {
+    pc.fillStyle = '#94a3b8'; pc.font = 'italic 14px system-ui, sans-serif';
+    pc.fillText('Record some readings first — your amounts of water will appear here.', (PM.l + PW) / 2, py(YMAX / 2));
+  }
+  for (const s of ss) {
+    pc.fillStyle = '#334155'; pc.font = '600 13px system-ui, sans-serif'; pc.textBaseline = 'top';
+    pc.fillText(s.k, s.cx, py(0) + 6);
+    const bw = Math.min(s.w * .6, 70);
+    // the computer's bar, behind, once opened
+    if (answerOpen) {
+      pc.fillStyle = 'rgba(15, 23, 42, 0.12)'; pc.strokeStyle = '#0f172a'; pc.lineWidth = 1.5; pc.setLineDash([5, 4]);
+      const m = trueMean(s.k);
+      pc.fillRect(s.cx - bw / 2 - 6, py(m), bw + 12, py(0) - py(m)); pc.strokeRect(s.cx - bw / 2 - 6, py(m), bw + 12, py(0) - py(m));
+      pc.setLineDash([]);
+    }
+    if (bars[s.k] !== undefined) {
+      const st = barState[s.k];
+      pc.fillStyle = st === 'ok' ? '#22c55e' : st ? '#f87171' : '#60a5fa';
+      pc.fillRect(s.cx - bw / 2, py(bars[s.k]), bw, py(0) - py(bars[s.k]));
+      pc.strokeStyle = '#1e3a8a'; pc.lineWidth = 1; pc.strokeRect(s.cx - bw / 2, py(bars[s.k]), bw, py(0) - py(bars[s.k]));
+    }
+  }
+}
+
+let dragging = false;
+function placeBar(e) {
+  const r = plot.getBoundingClientRect();
+  const X = (e.clientX - r.left) / plotCss, Y = (e.clientY - r.top) / plotCss;
+  const s = slots().find(s => X >= s.x0 && X < s.x0 + s.w);
+  if (!s) return;
+  bars[s.k] = Math.max(0, Math.min(YMAX, Math.round(fromPy(Y) * 10) / 10));
+  delete barState[s.k]; graphDone = false; updateShow();
+  drawPlot();
+}
+plot.addEventListener('pointerdown', e => { dragging = true; plot.setPointerCapture(e.pointerId); placeBar(e); });
+plot.addEventListener('pointermove', e => { if (dragging) placeBar(e); });
+plot.addEventListener('pointerup', () => { dragging = false; });
+
+function checkBars() {
+  const ss = slots(), fb = document.getElementById('bar-fb'), items = [];
+  if (!ss.length) { fb.innerHTML = '<li class="info">ℹ Record some readings first.</li>'; return; }
+  let all = true;
+  for (const { k } of ss) {
+    if (bars[k] === undefined) { items.push(['muted', `• ${k} mL: no bar yet.`]); all = false; continue; }
+    const d = bars[k] - trueMean(k);
+    if (Math.abs(d) <= BAR_TOL + 1e-9) { barState[k] = 'ok'; items.push(['ok', `✓ ${k} mL: correct.`]); }
+    else { barState[k] = d > 0 ? 'high' : 'low'; all = false; items.push(['bad', `✗ ${k} mL: a little too ${d > 0 ? 'high' : 'low'}. Check your mean, then the height of the bar.`]); }
+  }
+  graphDone = all;
+  if (all) items.unshift(['ok', '★ All your bars are correct! You can now compare with the computer\'s graph.']);
+  updateShow(); drawPlot();
+  fb.innerHTML = items.map(([c, t]) => `<li class="${c}">${t}</li>`).join('');
+}
+
+function clearBars() { bars = {}; barState = {}; graphDone = false; answerOpen = false; updateShow(); drawPlot(); document.getElementById('bar-fb').innerHTML = ''; }
+
+function updateShow() {
+  if (!graphDone) answerOpen = false;
+  const b = document.getElementById('show-btn');
+  b.disabled = !graphDone;
+  b.textContent = !graphDone ? '🔒 Show the computer\'s graph' : answerOpen ? 'Hide the computer\'s graph' : '🔓 Show the computer\'s graph';
+}
+function toggleAnswer() { if (!graphDone) return; answerOpen = !answerOpen; updateShow(); drawPlot(); }
+
+// =====================================================================
+// Start
+// =====================================================================
+window.addEventListener('resize', () => { sizeScene(); sizePlot(); });
+tab('launch');
+drawScene();
+</script>
+</body>
+</html>

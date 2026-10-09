@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saltwater Conductivity Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* Light teal background */
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .lcd-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Tab Transition */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* The results table, laid out as a scientist would: IV down the first
+           column, one merged DV heading over the trial columns. */
+        .sci-table { border-collapse: collapse; margin: 0 auto; }
+        .sci-table th, .sci-table td {
+            border: 1px solid #94a3b8;
+            padding: 0.5rem 1rem;
+            text-align: center;
+        }
+        .sci-table th { background: #f1f5f9; color: #1e293b; font-weight: 600; }
+        .sci-table td { font-variant-numeric: tabular-nums; min-width: 5.5rem; }
+        .sci-table td.mean-cell { background: #fffbeb; }
+        .sci-table th.current-trial { background: #dbeafe; }
+        .mean-input {
+            width: 4.6rem; text-align: center; border: 1px solid #94a3b8; border-radius: 6px;
+            padding: 2px 4px; background: #fff; font-variant-numeric: tabular-nums;
+        }
+        .sci-table td.mean-ok { background: #dcfce7; }
+        .sci-table td.mean-dp { background: #fef3c7; }
+        .sci-table td.mean-bad { background: #fee2e2; }
+        .mean-mark { display: inline-block; width: 1rem; font-weight: 700; }
+        @media (max-width: 640px) {
+            .sci-table th, .sci-table td { padding: 0.35rem 0.4rem; font-size: 0.8rem; min-width: 3.1rem; }
+            .mean-input { width: 3.4rem; }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-5xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white text-center">
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
+                <i class="fa-solid fa-flask text-yellow-300 mr-3"></i>Saltwater Conductivity Lab
+            </h1>
+            <p class="text-blue-100 mt-2 text-sm md:text-base">Investigate how dissolved ions affect the flow of electricity!</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50">
+            <button onclick="switchTab('experiment')" id="tab-experiment" class="tab-btn flex-1 py-4 text-center font-semibold focus:outline-none">
+                <i class="fa-solid fa-vial mr-2"></i> Experiment
+            </button>
+            <button onclick="switchTab('table')" id="tab-table" class="tab-btn flex-1 py-4 text-center font-semibold focus:outline-none">
+                <i class="fa-solid fa-table-list mr-2"></i> Data Table
+            </button>
+            <button onclick="switchTab('graph')" id="tab-graph" class="tab-btn flex-1 py-4 text-center font-semibold focus:outline-none">
+                <i class="fa-solid fa-chart-line mr-2"></i> Graph
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="p-4 md:p-8">
+
+            <!-- EXPERIMENT TAB -->
+            <div id="content-experiment" class="tab-content active">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                    <!-- Left Column: the circuit, beaker and ions, drawn on one canvas -->
+                    <div class="col-span-1 md:col-span-7 bg-slate-50 rounded-2xl p-3 border border-slate-200 flex flex-col justify-center">
+                        <div id="scene-wrap" class="w-full">
+                            <canvas id="scene" aria-label="A 9 V battery, a bulb and two electrodes in a beaker of salt water, with ions moving between the electrodes"></canvas>
+                        </div>
+                        <div class="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-slate-600">
+                            <span><span class="inline-block w-3 h-3 rounded-full align-middle mr-1" style="background:#f59e0b"></span>Na⁺ moves to the cathode (−)</span>
+                            <span><span class="inline-block w-4 h-4 rounded-full align-middle mr-1" style="background:#22c55e"></span>Cl⁻ moves to the anode (+)</span>
+                            <span><span class="inline-block w-3 h-3 rounded-full align-middle mr-1 border border-slate-400 bg-white"></span>gas bubbles at both electrodes</span>
+                        </div>
+                        <div class="mt-2 text-center text-sm text-slate-500 font-medium">Beaker with 250 mL distilled water</div>
+                    </div>
+
+                    <!-- Right Column: Controls & Meters -->
+                    <div class="col-span-1 md:col-span-5 flex flex-col gap-6">
+
+                        <!-- Digital Meters -->
+                        <div class="bg-slate-800 rounded-2xl p-5 shadow-inner border-[6px] border-slate-700">
+                            <h3 class="text-slate-400 text-xs font-bold tracking-wider mb-3 uppercase">Multimeter Output</h3>
+
+                            <!-- Voltage Reading -->
+                            <div class="bg-black rounded-lg p-3 mb-3 border-2 border-slate-900 flex justify-between items-center">
+                                <span class="text-slate-500 text-sm font-bold">VOLTAGE</span>
+                                <div class="text-right flex items-baseline">
+                                    <span id="meter-voltage" class="lcd-font text-3xl font-bold text-green-400 tracking-widest">0.03</span>
+                                    <span class="text-green-600 text-sm ml-1 font-bold">V</span>
+                                </div>
+                            </div>
+
+                            <!-- Current Reading -->
+                            <div class="bg-black rounded-lg p-3 border-2 border-slate-900 flex justify-between items-center">
+                                <span class="text-slate-500 text-sm font-bold">CURRENT</span>
+                                <div class="text-right flex items-baseline">
+                                    <span id="meter-current" class="lcd-font text-3xl font-bold text-red-400 tracking-widest">0.1</span>
+                                    <span class="text-red-600 text-sm ml-1 font-bold">mA</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Controls -->
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex-1">
+                            <h3 class="text-slate-800 font-bold mb-4 border-b pb-2"><i class="fa-solid fa-sliders text-blue-500 mr-2"></i>Controls</h3>
+
+                            <!-- State info -->
+                            <div class="flex justify-between items-center mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                <span class="text-slate-600 font-medium">Total Salt Dissolved:</span>
+                                <span class="text-2xl font-bold text-blue-700"><span id="salt-mass-display">0.00</span> <span class="text-sm text-blue-500">g</span></span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4 text-sm text-slate-500 px-1">
+                                <span>Trial (beaker) number: <span id="trial-display" class="font-bold text-slate-700">1</span></span>
+                                <span>Maximum: 10.00 g</span>
+                            </div>
+
+                            <!-- How much each press adds -->
+                            <div class="mb-3">
+                                <span class="text-slate-600 text-sm font-medium">Amount to add each time:</span>
+                                <div class="flex gap-2 mt-2">
+                                    <button onclick="setStep(0.5)" data-step="0.5" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">0.50 g</button>
+                                    <button onclick="setStep(1)" data-step="1" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">1.00 g</button>
+                                    <button onclick="setStep(2)" data-step="2" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">2.00 g</button>
+                                </div>
+                            </div>
+
+                            <button id="btn-add-salt" onclick="addSalt()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
+                                <i class="fa-solid fa-spoon mr-2"></i> Add 0.50 g Salt (NaCl)
+                            </button>
+
+                            <button id="btn-record" onclick="recordDataPoint()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
+                                <i class="fa-solid fa-clipboard-check mr-2"></i> Record Voltage
+                            </button>
+
+                            <button id="btn-refill" onclick="refillBeaker()" class="w-full bg-cyan-100 hover:bg-cyan-200 text-cyan-800 font-bold py-3 px-4 rounded-xl flex items-center justify-center mb-3">
+                                <i class="fa-solid fa-faucet-drip mr-2"></i> Empty &amp; Refill Beaker (next trial)
+                            </button>
+
+                            <button id="btn-reset" onclick="resetLab()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center">
+                                <i class="fa-solid fa-rotate-right mr-2"></i> Reset Lab (deletes all data)
+                            </button>
+                            <p id="record-msg" class="text-sm text-center mt-3 h-5 text-emerald-700"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA TABLE TAB -->
+            <div id="content-table" class="tab-content">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between md:items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-table text-blue-500 mr-2"></i>Results Table</h2>
+                            <p class="text-slate-500 text-sm mt-1">Each reading goes in the row for its mass and the column for its trial. <b>Work out the mean for each row and type it in the Mean column</b>, to 2 decimal places like your readings. If a row has a blank, average only the readings that row has.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="checkMeans()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center whitespace-nowrap">
+                                <i class="fa-solid fa-check-double mr-2"></i> Check my means
+                            </button>
+                            <button onclick="downloadCSV()" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg font-medium text-sm flex items-center justify-center whitespace-nowrap">
+                                <i class="fa-solid fa-download mr-2"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto p-4 md:p-6">
+                        <table class="sci-table" id="results-table"></table>
+                        <p id="empty-table-msg" class="p-8 text-center text-slate-400 italic">No data recorded yet. Go to the Experiment tab and record some voltages!</p>
+                        <ul id="mean-feedback" class="mt-4 space-y-1 text-sm max-w-xl mx-auto"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRAPH TAB -->
+            <div id="content-graph" class="tab-content">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-6">
+                    <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mb-5 w-full md:w-auto md:inline-flex">
+                        <button onclick="switchGraphMode('plot')" id="btn-mode-plot" class="flex-1 px-4 py-2 rounded-md text-sm font-semibold">1. Plot it yourself</button>
+                        <button onclick="switchGraphMode('auto')" id="btn-mode-auto" class="flex-1 px-4 py-2 rounded-md text-sm font-semibold">2. Computer graph <i id="lock-icon" class="fa-solid fa-lock ml-1"></i></button>
+                    </div>
+
+                    <!-- Plot it yourself -->
+                    <div id="mode-plot">
+                        <p class="text-slate-600 text-sm mb-3">Work out the <b>mean voltage</b> for each mass from your table. Then click on the graph to place one point for each mass — click again to move it. Press <b>Check my points</b> when you are done.</p>
+                        <div id="plot-wrap" class="w-full bg-white rounded-xl border border-slate-200">
+                            <canvas id="plot" aria-label="Empty graph axes: mass of salt in grams against mean voltage in volts"></canvas>
+                        </div>
+                        <div class="flex flex-wrap gap-3 mt-4">
+                            <button onclick="checkPoints()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-5 rounded-lg"><i class="fa-solid fa-check-double mr-2"></i>Check my points</button>
+                            <button onclick="clearPoints()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-5 rounded-lg">Clear my points</button>
+                        </div>
+                        <ul id="plot-feedback" class="mt-4 space-y-1 text-sm"></ul>
+                    </div>
+
+                    <!-- Computer graph -->
+                    <div id="mode-auto" class="hidden">
+                        <div class="relative h-[400px] w-full bg-slate-50 rounded-xl border border-slate-100">
+                            <canvas id="resultsChart"></canvas>
+                            <div id="lock-overlay" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 bg-slate-50/95 rounded-xl text-center px-6">
+                                <i class="fa-solid fa-lock text-4xl mb-3 opacity-60"></i>
+                                <p class="font-semibold">Locked</p>
+                                <p class="text-sm">Plot all your points correctly in "1. Plot it yourself" first.<br>Then compare your graph with the computer's.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        // State
+        // ================================================================
+        let saltMass = 0; // grams
+        const MAX_SALT = 10; // grams: 40 g/L, just above seawater (~35 g/L = 8.75 g in 250 mL)
+        let saltStep = 0.5; // grams added per press: 0.5, 1 or 2
+        let current = 0.09; // mA
+        let voltage = 0.03; // V (measured across the series bulb)
+        let trialNumber = 1; // one trial = one beaker of fresh water
+
+        // Readings, as a scientist's table holds them: readings[trial][mass] = volts.
+        // Mass keys are strings with two decimals ("4.00"), the balance's resolution.
+        let readings = {};
+
+        // --- Physics Constants ---
+        const V_in = 9.0; // 9V battery
+        const R_fixed = 330; // 330 Ohm: the light bulb
+        const G0 = 0.00001; // Base conductance of distilled water (S)
+        // Conductance per gram. 0.0015 (was 0.005) spreads the rise across 0-10 g:
+        // ~2.9 V at 1 g, ~6.0 V at 5 g, ~6.9 V at 10 g. At 0.005 almost all the
+        // change happened in the first gram and every graph was a step (2026-10-08).
+        const k = 0.0015;
+        const alpha = 0.05; // Saturation factor
+
+        // --- Real-lab variation, so repeated trials differ ---
+        // Each fresh beaker differs a little (electrode spacing and depth, water
+        // temperature): its conductance is scaled by up to +/-6 %. Each reading
+        // also carries up to +/-1 % meter noise, fixed once the salt is in.
+        const BEAKER_SPREAD = 0.06;
+        const READING_SPREAD = 0.01;
+        let beakerFactor = 1;
+        let readingFactor = 1;
+        function randomFactor(spread) { return 1 + (Math.random() * 2 - 1) * spread; }
+
+        // --- Precision: each quantity to the resolution of its instrument ---
+        // Balance +/-0.01 g, voltmeter +/-0.01 V, ammeter +/-0.1 mA. Decimal places,
+        // not significant figures: 0.03 V is one s.f. and no meter would show 0.0300.
+        const fmtMass = m => m.toFixed(2);
+        const fmtVolt = v => v.toFixed(2);
+        const fmtCurrent = i => i.toFixed(1);
+
+        // --- The graph check ---
+        // A plotted point passes if it is within 0.10 V of the mean of the student's
+        // own readings for that mass: about half a small square on the 0.2 V grid.
+        const PLOT_TOLERANCE = 0.10;
+        let placed = {};      // placed[mass] = volts where the student clicked
+        let checked = {};     // checked[mass] = 'ok' | 'high' | 'low'
+        let graphUnlocked = false;
+
+        // --- The means check ---
+        // Readings are to 2 d.p., so the mean should be too. A typed mean passes if it
+        // is within 0.01 V of the true mean rounded to 2 d.p.: 5.6333 -> 5.63, and
+        // 5.62 or 5.64 (a rounding slip) still pass. A wrong divisor does not.
+        const MEAN_TOLERANCE = 0.01;
+        let studentMeans = {};  // studentMeans[mass] = what the student typed
+        let meanStatus = {};    // meanStatus[mass] = 'ok' | 'dp' | 'bad'
+
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // ================================================================
+        // Physics
+        // ================================================================
+        function updatePhysics() {
+            // Conductance G = G0 + (k * mass) / (1 + alpha * mass), scaled per beaker
+            const G = (G0 + (k * saltMass) / (1 + alpha * saltMass)) * beakerFactor;
+            const R_water = 1 / G;
+            const I_amps = V_in / (R_fixed + R_water);
+            current = I_amps * 1000 * readingFactor;
+            voltage = I_amps * R_fixed * readingFactor;
+            setIonCount();
+            updateUI();
+        }
+
+        // ================================================================
+        // Controls
+        // ================================================================
+        function updateUI() {
+            document.getElementById('meter-current').innerText = fmtCurrent(current);
+            document.getElementById('meter-voltage').innerText = fmtVolt(voltage);
+            document.getElementById('salt-mass-display').innerText = fmtMass(saltMass);
+            document.getElementById('trial-display').innerText = trialNumber;
+
+            const btnAdd = document.getElementById('btn-add-salt');
+            if (saltMass + saltStep > MAX_SALT + 1e-9) {
+                btnAdd.disabled = true;
+                btnAdd.classList.add('opacity-50', 'cursor-not-allowed');
+                btnAdd.innerHTML = saltMass >= MAX_SALT - 1e-9
+                    ? '<i class="fa-solid fa-ban mr-2"></i> Max Salt Reached (10.00 g)'
+                    : `<i class="fa-solid fa-ban mr-2"></i> ${fmtMass(saltStep)} g would go over 10.00 g`;
+            } else {
+                btnAdd.disabled = false;
+                btnAdd.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnAdd.innerHTML = `<i class="fa-solid fa-spoon mr-2"></i> Add ${fmtMass(saltStep)} g Salt (NaCl)`;
+            }
+
+            document.querySelectorAll('.step-btn').forEach(b => {
+                const on = parseFloat(b.dataset.step) === saltStep;
+                b.className = 'step-btn flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors ' +
+                    (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50');
+            });
+        }
+
+        function setStep(step) {
+            saltStep = step;
+            updateUI();
+        }
+
+        function addSalt() {
+            if (saltMass + saltStep > MAX_SALT + 1e-9) return;
+            // Round to two decimals so repeated steps never drift (0.1 + 0.2 trap)
+            saltMass = Math.round((saltMass + saltStep) * 100) / 100;
+            readingFactor = randomFactor(READING_SPREAD);
+            sprinkleSalt();
+            updatePhysics();
+            say('');
+        }
+
+        // A new trial: fresh distilled water, same results table.
+        function refillBeaker() {
+            trialNumber++;
+            saltMass = 0;
+            beakerFactor = randomFactor(BEAKER_SPREAD);
+            readingFactor = randomFactor(READING_SPREAD);
+            bubbles = [];
+            updatePhysics();
+            renderTable();
+            say(`Fresh water in the beaker. You are now on trial ${trialNumber}.`);
+        }
+
+        function recordDataPoint() {
+            const m = fmtMass(saltMass);
+            const v = parseFloat(fmtVolt(voltage));
+            readings[trialNumber] = readings[trialNumber] || {};
+            if (readings[trialNumber][m] !== undefined) {
+                if (!confirm(`You already recorded ${m} g in trial ${trialNumber} (${fmtVolt(readings[trialNumber][m])} V). Replace it with ${fmtVolt(v)} V?`)) return;
+            }
+            readings[trialNumber][m] = v;
+            delete meanStatus[m];   // this row's mean has changed
+            dataChanged();
+            say(`Recorded: ${m} g → ${fmtVolt(v)} V in trial ${trialNumber}.`);
+        }
+
+        function resetLab() {
+            if (Object.keys(readings).length && !confirm('Delete ALL your recorded data and start again?')) return;
+            saltMass = 0;
+            trialNumber = 1;
+            readings = {};
+            placed = {};
+            studentMeans = {};
+            meanStatus = {};
+            beakerFactor = randomFactor(BEAKER_SPREAD);
+            readingFactor = randomFactor(READING_SPREAD);
+            bubbles = [];
+            updatePhysics();
+            dataChanged();
+            say('');
+            switchTab('experiment');
+        }
+
+        function say(msg) { document.getElementById('record-msg').innerText = msg; }
+
+        // New or changed data: the table redraws, and any graph check is stale.
+        function dataChanged() {
+            checked = {};
+            graphUnlocked = false;
+            renderTable();
+            document.getElementById('mean-feedback').innerHTML = '';
+            drawPlot();
+            renderFeedback([]);
+            updateChart();
+            updateLock();
+        }
+
+        // ================================================================
+        // The scene: circuit, beaker, ions, bubbles — one canvas
+        // ================================================================
+        // Logical coordinates; the canvas scales to its container.
+        const SW = 600, SH = 470;
+        const WATER = { x0: 116, x1: 484, top: 238, bottom: 452 };
+        const CATHODE_X = 190, ANODE_X = 410, ELECTRODE_W = 18;
+        const ION_X0 = CATHODE_X + ELECTRODE_W / 2 + 4;   // ions travel between the electrodes
+        const ION_X1 = ANODE_X - ELECTRODE_W / 2 - 4;
+        const scene = document.getElementById('scene');
+        const sctx = scene.getContext('2d');
+        let sceneScale = 1;
+
+        let ions = [];      // {type: 'na'|'cl', x, y, vx, vy}
+        let bubbles = [];   // {x, y, r, gas: 'h2'|'cl2'}
+        let grains = [];    // {x, y, vy}
+
+        function newIon(type) {
+            return {
+                type,
+                x: ION_X0 + Math.random() * (ION_X1 - ION_X0),
+                y: WATER.top + 10 + Math.random() * (WATER.bottom - WATER.top - 20),
+                vx: 0, vy: 0
+            };
+        }
+
+        // More salt, more ions. Distilled water still has a trace.
+        function setIonCount() {
+            const pairs = saltMass === 0 ? 1 : Math.round(4 + 5 * saltMass);
+            const na = ions.filter(i => i.type === 'na'), cl = ions.filter(i => i.type === 'cl');
+            while (na.length < pairs) na.push(newIon('na'));
+            while (cl.length < pairs) cl.push(newIon('cl'));
+            ions = na.slice(0, pairs).concat(cl.slice(0, pairs));
+        }
+
+        function sprinkleSalt() {
+            if (reduceMotion) return;
+            for (let i = 0; i < 28; i++) {
+                grains.push({ x: 270 + Math.random() * 60, y: 150 - Math.random() * 40, vy: 150 + Math.random() * 80 });
+            }
+        }
+
+        function resizeScene() {
+            const w = document.getElementById('scene-wrap').clientWidth;
+            const dpr = window.devicePixelRatio || 1;
+            scene.style.width = w + 'px';
+            scene.style.height = (w * SH / SW) + 'px';
+            scene.width = Math.round(w * dpr);
+            scene.height = Math.round(w * SH / SW * dpr);
+            sceneScale = w / SW * dpr;
+        }
+
+        function step(dt) {
+            // Drift speed follows the current; Cl- is a little more mobile than Na+.
+            const drift = 2.4 * current; // px/s
+            for (const ion of ions) {
+                // random jostling, damped, plus a steady drift towards its electrode
+                ion.vx = ion.vx * 0.9 + (Math.random() - 0.5) * 900 * dt;
+                ion.vy = ion.vy * 0.9 + (Math.random() - 0.5) * 900 * dt;
+                const d = ion.type === 'na' ? -drift : drift * 1.3;
+                ion.x += (ion.vx + d) * dt;
+                ion.y += ion.vy * dt;
+                if (ion.y < WATER.top + 8) { ion.y = WATER.top + 8; ion.vy = Math.abs(ion.vy); }
+                if (ion.y > WATER.bottom - 8) { ion.y = WATER.bottom - 8; ion.vy = -Math.abs(ion.vy); }
+                // An ion that reaches its electrode is replaced at the other side,
+                // so the flow of charge carries on, as the current does.
+                if (ion.type === 'na' && ion.x < ION_X0) { ion.x = ION_X1 - Math.random() * 10; }
+                if (ion.type === 'cl' && ion.x > ION_X1) { ion.x = ION_X0 + Math.random() * 10; }
+                if (ion.type === 'na' && ion.x > ION_X1) ion.x = ION_X1;
+                if (ion.type === 'cl' && ion.x < ION_X0) ion.x = ION_X0;
+            }
+            // Gas bubbles at both electrodes, more with more current:
+            // hydrogen at the cathode, chlorine at the anode.
+            const rate = current * 0.35; // bubbles per second per electrode
+            for (const [x, gas, side] of [[CATHODE_X, 'h2', 1], [ANODE_X, 'cl2', -1]]) {
+                if (Math.random() < rate * dt) {
+                    bubbles.push({ x: x + side * (ELECTRODE_W / 2 + 3), y: 300 + Math.random() * 140, r: 2 + Math.random() * 2.5, gas });
+                }
+            }
+            for (const b of bubbles) { b.y -= 45 * dt; b.x += (Math.random() - 0.5) * 20 * dt; }
+            bubbles = bubbles.filter(b => b.y > WATER.top + 2);
+            for (const g of grains) g.y += g.vy * dt;
+            grains = grains.filter(g => g.y < WATER.top + 20);
+        }
+
+        function line(points, colour, width = 4, dash = []) {
+            sctx.beginPath();
+            sctx.setLineDash(dash);
+            sctx.strokeStyle = colour;
+            sctx.lineWidth = width;
+            sctx.lineJoin = 'round';
+            sctx.moveTo(points[0][0], points[0][1]);
+            for (const p of points.slice(1)) sctx.lineTo(p[0], p[1]);
+            sctx.stroke();
+            sctx.setLineDash([]);
+        }
+
+        function roundRect(x, y, w, h, r, fill, stroke) {
+            sctx.beginPath();
+            sctx.roundRect(x, y, w, h, r);
+            if (fill) { sctx.fillStyle = fill; sctx.fill(); }
+            if (stroke) { sctx.strokeStyle = stroke; sctx.lineWidth = 2; sctx.stroke(); }
+        }
+
+        function label(text, x, y, opts = {}) {
+            sctx.font = `${opts.weight || 600} ${opts.size || 13}px Inter, sans-serif`;
+            sctx.fillStyle = opts.colour || '#334155';
+            sctx.textAlign = opts.align || 'center';
+            sctx.textBaseline = 'middle';
+            sctx.fillText(text, x, y);
+        }
+
+        function drawScene() {
+            sctx.setTransform(sceneScale, 0, 0, sceneScale, 0, 0);
+            sctx.clearRect(0, 0, SW, SH);
+
+            // Wires. Battery + -> bulb -> anode; battery - -> cathode.
+            line([[152, 95], [377, 95]], '#ef4444');
+            line([[423, 95], [565, 95], [565, 130], [ANODE_X, 130], [ANODE_X, 152]], '#ef4444');
+            line([[38, 95], [18, 95], [18, 130], [CATHODE_X, 130], [CATHODE_X, 152]], '#1f2937');
+
+            // Battery
+            roundRect(40, 72, 112, 46, 8, '#1e293b', '#334155');
+            roundRect(152, 86, 6, 18, 2, '#94a3b8');
+            roundRect(34, 86, 6, 18, 2, '#94a3b8');
+            label('9 V', 96, 95, { colour: '#fff', size: 18, weight: 700 });
+            label('+', 140, 80, { colour: '#f87171', size: 13, weight: 700 });
+            label('−', 52, 80, { colour: '#cbd5e1', size: 13, weight: 700 });
+
+            // Bulb, glowing with the voltage across it
+            const glow = Math.max(0, Math.min(1, voltage / 7.0));
+            if (glow > 0.03) {
+                const g = sctx.createRadialGradient(400, 95, 10, 400, 95, 25 + 45 * glow);
+                g.addColorStop(0, `rgba(250, 204, 21, ${0.75 * glow})`);
+                g.addColorStop(1, 'rgba(250, 204, 21, 0)');
+                sctx.fillStyle = g;
+                sctx.beginPath(); sctx.arc(400, 95, 25 + 45 * glow, 0, Math.PI * 2); sctx.fill();
+            }
+            sctx.beginPath(); sctx.arc(400, 95, 23, 0, Math.PI * 2);
+            sctx.fillStyle = glow > 0.03 ? `rgb(${254}, ${249 - 30 * glow}, ${195 - 150 * glow})` : '#f1f5f9';
+            sctx.fill(); sctx.strokeStyle = '#94a3b8'; sctx.lineWidth = 2; sctx.stroke();
+            roundRect(390, 116, 20, 10, 2, '#94a3b8');
+            label('bulb', 400, 142, { size: 12, colour: '#64748b', weight: 500 });
+
+            // Voltmeter across the bulb
+            line([[372, 95], [372, 52]], '#475569', 2, [5, 4]);
+            line([[428, 95], [428, 52]], '#475569', 2, [5, 4]);
+            roundRect(340, 12, 120, 40, 8, '#0f172a', '#334155');
+            sctx.font = '700 17px Orbitron, monospace';
+            sctx.fillStyle = '#4ade80'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+            sctx.fillText(fmtVolt(voltage) + ' V', 400, 33);
+            label('voltmeter', 505, 32, { size: 12, colour: '#64748b', weight: 500 });
+
+            // Beaker: water deepens in colour with salt
+            const tint = saltMass / MAX_SALT;
+            const wg = sctx.createLinearGradient(0, WATER.top, 0, WATER.bottom);
+            wg.addColorStop(0, `rgba(186, 230, 253, ${0.55 + 0.2 * tint})`);
+            wg.addColorStop(1, `rgba(56, 189, 248, ${0.55 + 0.25 * tint})`);
+            sctx.fillStyle = wg;
+            sctx.beginPath(); sctx.roundRect(WATER.x0, WATER.top, WATER.x1 - WATER.x0, WATER.bottom - WATER.top, [0, 0, 16, 16]); sctx.fill();
+            sctx.strokeStyle = '#94a3b8'; sctx.lineWidth = 6;
+            sctx.beginPath(); sctx.moveTo(110, 180); sctx.lineTo(110, 440); sctx.arcTo(110, 458, 128, 458, 18);
+            sctx.lineTo(472, 458); sctx.arcTo(490, 458, 490, 440, 18); sctx.lineTo(490, 180); sctx.stroke();
+            line([[100, 180], [120, 180]], '#94a3b8', 6);
+            line([[480, 180], [500, 180]], '#94a3b8', 6);
+
+            // Bubbles, behind the ions
+            for (const b of bubbles) {
+                sctx.beginPath(); sctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                sctx.fillStyle = b.gas === 'h2' ? 'rgba(255,255,255,0.85)' : 'rgba(217, 249, 157, 0.9)';
+                sctx.fill(); sctx.strokeStyle = 'rgba(71, 85, 105, 0.6)'; sctx.lineWidth = 1; sctx.stroke();
+            }
+
+            // Ions
+            for (const ion of ions) {
+                const na = ion.type === 'na';
+                sctx.beginPath(); sctx.arc(ion.x, ion.y, na ? 6 : 9, 0, Math.PI * 2);
+                sctx.fillStyle = na ? '#f59e0b' : '#22c55e'; sctx.fill();
+                label(na ? '+' : '−', ion.x, ion.y + 0.5, { colour: '#fff', size: na ? 11 : 14, weight: 800 });
+            }
+
+            // Electrodes, on top, with their names
+            for (const [x, name, sign, colour] of [[CATHODE_X, 'cathode', '−', '#1f2937'], [ANODE_X, 'anode', '+', '#dc2626']]) {
+                const eg = sctx.createLinearGradient(x - ELECTRODE_W / 2, 0, x + ELECTRODE_W / 2, 0);
+                eg.addColorStop(0, '#64748b'); eg.addColorStop(0.5, '#cbd5e1'); eg.addColorStop(1, '#64748b');
+                sctx.fillStyle = eg;
+                sctx.beginPath(); sctx.roundRect(x - ELECTRODE_W / 2, 150, ELECTRODE_W, 285, 4); sctx.fill();
+                const inward = x === CATHODE_X ? 1 : -1;
+                roundRect(x + inward * 16 - (inward < 0 ? 84 : 0), 196, 84, 26, 6, 'rgba(255,255,255,0.92)', colour);
+                label(`${name} (${sign})`, x + inward * 16 + inward * 42, 209, { colour, size: 13, weight: 700 });
+            }
+
+            // Salt falling in
+            sctx.fillStyle = '#ffffff';
+            for (const g of grains) {
+                sctx.beginPath(); sctx.arc(g.x, g.y, 2.2, 0, Math.PI * 2); sctx.fill();
+                sctx.strokeStyle = '#94a3b8'; sctx.lineWidth = 0.6; sctx.stroke();
+            }
+        }
+
+        let lastT = null;
+        function animate(t) {
+            const dt = lastT === null ? 0 : Math.min(0.05, (t - lastT) / 1000);
+            lastT = t;
+            if (!reduceMotion) step(dt);
+            drawScene();
+            requestAnimationFrame(animate);
+        }
+
+        // ================================================================
+        // The results table
+        // ================================================================
+        function masses() {
+            const all = new Set();
+            for (const t in readings) for (const m in readings[t]) all.add(m);
+            return [...all].sort((a, b) => parseFloat(a) - parseFloat(b));
+        }
+
+        function trialCount() {
+            const recorded = Object.keys(readings).map(Number);
+            return Math.max(3, trialNumber, ...recorded);
+        }
+
+        function meanOf(m) {
+            const vs = [];
+            for (const t in readings) if (readings[t][m] !== undefined) vs.push(readings[t][m]);
+            return vs.reduce((a, b) => a + b, 0) / vs.length;
+        }
+
+        function renderTable() {
+            const table = document.getElementById('results-table');
+            const ms = masses();
+            document.getElementById('empty-table-msg').style.display = ms.length ? 'none' : 'block';
+            if (!ms.length) { table.innerHTML = ''; return; }
+            const n = trialCount();
+            let html = '<thead><tr>' +
+                '<th rowspan="2">Mass of salt / g<br><span class="font-normal text-slate-500">(± 0.01 g)</span></th>' +
+                `<th colspan="${n + 1}">Voltage across the bulb / V <span class="font-normal text-slate-500">(± 0.01 V)</span></th>` +
+                '</tr><tr>';
+            for (let t = 1; t <= n; t++) html += `<th class="${t === trialNumber ? 'current-trial' : ''}">Trial ${t}</th>`;
+            html += '<th>Mean</th></tr></thead><tbody>';
+            for (const m of ms) {
+                html += `<tr><td class="font-semibold">${m}</td>`;
+                for (let t = 1; t <= n; t++) {
+                    const v = readings[t] && readings[t][m];
+                    html += `<td>${v === undefined ? '' : fmtVolt(v)}</td>`;
+                }
+                const st = meanStatus[m];
+                const mark = st === 'ok' ? '✓' : st === 'dp' ? '!' : st === 'bad' ? '✗' : '';
+                const val = (studentMeans[m] || '').replace(/"/g, '&quot;');
+                html += `<td class="mean-cell ${st ? 'mean-' + st : ''}" data-mass="${m}">` +
+                    `<input class="mean-input" data-mass="${m}" inputmode="decimal" aria-label="Mean voltage for ${m} g" value="${val}">` +
+                    `<span class="mean-mark">${mark}</span></td></tr>`;
+            }
+            table.innerHTML = html + '</tbody>';
+            table.querySelectorAll('.mean-input').forEach(inp => inp.addEventListener('input', () => {
+                const m = inp.dataset.mass;
+                studentMeans[m] = inp.value;
+                delete meanStatus[m];   // edited: no longer checked
+                const td = inp.parentElement;
+                td.className = 'mean-cell';
+                td.querySelector('.mean-mark').textContent = '';
+            }));
+        }
+
+        function checkMeans() {
+            const ms = masses();
+            const fb = document.getElementById('mean-feedback');
+            if (!ms.length) { fb.innerHTML = '<li class="text-blue-700">ℹ Record some voltages first.</li>'; return; }
+            const items = [];
+            let allOk = true;
+            for (const m of ms) {
+                const raw = (studentMeans[m] || '').trim().replace(',', '.');
+                delete meanStatus[m];
+                if (raw === '') { items.push(['todo', `${m} g: no mean typed yet.`]); allOk = false; continue; }
+                const x = Number(raw);
+                if (!isFinite(x)) { meanStatus[m] = 'bad'; items.push(['bad', `${m} g: "${raw}" is not a number.`]); allOk = false; continue; }
+                const target = Math.round(meanOf(m) * 100) / 100;
+                if (Math.abs(x - target) <= MEAN_TOLERANCE + 1e-9) {
+                    const dp = raw.includes('.') ? raw.split('.')[1].length : 0;
+                    if (dp === 2) { meanStatus[m] = 'ok'; items.push(['ok', `${m} g: correct.`]); }
+                    else { meanStatus[m] = 'dp'; allOk = false; items.push(['dp', `${m} g: right value — now write it to 2 decimal places, like your readings.`]); }
+                } else {
+                    meanStatus[m] = 'bad'; allOk = false;
+                    items.push(['bad', `${m} g: not right. Add up the readings in this row and divide by how many there are.`]);
+                }
+            }
+            if (allOk) items.unshift(['done', 'All your means are correct! Now plot them in the Graph tab.']);
+            const icon = { ok: '✓', bad: '✗', todo: '•', dp: '!', done: '★' };
+            const colour = { ok: 'text-green-700', bad: 'text-red-700', todo: 'text-slate-500', dp: 'text-amber-700', done: 'text-green-800 font-bold' };
+            renderTable();
+            fb.innerHTML = items.map(([k, t]) => `<li class="${colour[k]}">${icon[k]} ${t}</li>`).join('');
+        }
+
+        // Same layout as the screen: a two-row heading, the DV heading over the trials.
+        function downloadCSV() {
+            const ms = masses();
+            if (!ms.length) { alert('No data to export!'); return; }
+            const n = trialCount();
+            const rows = [];
+            rows.push(['Mass of salt / g (± 0.01 g)', 'Voltage across the bulb / V (± 0.01 V)', ...Array(n).fill('')]);
+            rows.push(['', ...Array.from({ length: n }, (_, i) => `Trial ${i + 1}`), 'Mean']);
+            for (const m of ms) {
+                const r = [m];
+                for (let t = 1; t <= n; t++) r.push(readings[t] && readings[t][m] !== undefined ? fmtVolt(readings[t][m]) : '');
+                r.push(studentMeans[m] || '');
+                rows.push(r);
+            }
+            const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'salty_circuit_results.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ================================================================
+        // Plot it yourself
+        // ================================================================
+        const PW = 640, PH = 430;
+        const PM = { left: 70, right: 20, top: 20, bottom: 62 };
+        const X_MAX = 10, Y_MAX = 8;
+        const plot = document.getElementById('plot');
+        const pctx = plot.getContext('2d');
+        let plotScale = 1, plotCssScale = 1;
+
+        const px = x => PM.left + x / X_MAX * (PW - PM.left - PM.right);
+        const py = y => PH - PM.bottom - y / Y_MAX * (PH - PM.top - PM.bottom);
+        const fromPx = X => (X - PM.left) / (PW - PM.left - PM.right) * X_MAX;
+        const fromPy = Y => (PH - PM.bottom - Y) / (PH - PM.top - PM.bottom) * Y_MAX;
+
+        function resizePlot() {
+            const w = document.getElementById('plot-wrap').clientWidth;
+            if (!w) return;
+            const dpr = window.devicePixelRatio || 1;
+            plot.style.width = w + 'px';
+            plot.style.height = (w * PH / PW) + 'px';
+            plot.width = Math.round(w * dpr);
+            plot.height = Math.round(w * PH / PW * dpr);
+            plotScale = w / PW * dpr;
+            plotCssScale = w / PW;
+            drawPlot();
+        }
+
+        function drawPlot() {
+            pctx.setTransform(plotScale, 0, 0, plotScale, 0, 0);
+            pctx.clearRect(0, 0, PW, PH);
+            // Grid: minor 0.5 g and 0.2 V, major 1 g and 1 V
+            for (let x = 0; x <= X_MAX + 1e-9; x += 0.5) {
+                const major = Math.abs(x - Math.round(x)) < 1e-9;
+                pctx.strokeStyle = major ? '#94a3b8' : '#e2e8f0'; pctx.lineWidth = major ? 1 : 0.8;
+                pctx.beginPath(); pctx.moveTo(px(x), py(0)); pctx.lineTo(px(x), py(Y_MAX)); pctx.stroke();
+            }
+            for (let y = 0; y <= Y_MAX + 1e-9; y += 0.2) {
+                const major = Math.abs(y - Math.round(y)) < 1e-9;
+                pctx.strokeStyle = major ? '#94a3b8' : '#e2e8f0'; pctx.lineWidth = major ? 1 : 0.8;
+                pctx.beginPath(); pctx.moveTo(px(0), py(y)); pctx.lineTo(px(X_MAX), py(y)); pctx.stroke();
+            }
+            // Axes and labels
+            pctx.strokeStyle = '#1e293b'; pctx.lineWidth = 2;
+            pctx.beginPath(); pctx.moveTo(px(0), py(Y_MAX)); pctx.lineTo(px(0), py(0)); pctx.lineTo(px(X_MAX), py(0)); pctx.stroke();
+            pctx.fillStyle = '#334155'; pctx.font = '500 13px Inter, sans-serif';
+            pctx.textAlign = 'center'; pctx.textBaseline = 'top';
+            for (let x = 0; x <= X_MAX; x++) pctx.fillText(x, px(x), py(0) + 6);
+            pctx.textAlign = 'right'; pctx.textBaseline = 'middle';
+            for (let y = 0; y <= Y_MAX; y++) pctx.fillText(y, px(0) - 8, py(y));
+            pctx.font = '700 14px Inter, sans-serif'; pctx.textAlign = 'center'; pctx.textBaseline = 'alphabetic';
+            pctx.fillText('Mass of salt / g', px(X_MAX / 2), PH - 14);
+            pctx.save(); pctx.translate(20, py(Y_MAX / 2)); pctx.rotate(-Math.PI / 2);
+            pctx.fillText('Mean voltage across the bulb / V', 0, 0); pctx.restore();
+
+            // Faint markers where the student's masses are, so they know where to click
+            for (const m of masses()) {
+                pctx.strokeStyle = 'rgba(37, 99, 235, 0.25)'; pctx.lineWidth = 6;
+                pctx.beginPath(); pctx.moveTo(px(parseFloat(m)), py(0) - 1); pctx.lineTo(px(parseFloat(m)), py(0) - 9); pctx.stroke();
+            }
+            // The student's points
+            for (const m in placed) {
+                const X = px(parseFloat(m)), Y = py(placed[m]);
+                const state = checked[m];
+                const colour = state === 'ok' ? '#16a34a' : state ? '#dc2626' : '#1d4ed8';
+                pctx.strokeStyle = colour; pctx.lineWidth = 2.5;
+                pctx.beginPath(); pctx.moveTo(X - 6, Y - 6); pctx.lineTo(X + 6, Y + 6); pctx.moveTo(X + 6, Y - 6); pctx.lineTo(X - 6, Y + 6); pctx.stroke();
+            }
+        }
+
+        plot.addEventListener('pointerdown', e => {
+            const r = plot.getBoundingClientRect();
+            const X = (e.clientX - r.left) / plotCssScale, Y = (e.clientY - r.top) / plotCssScale;
+            const x = fromPx(X), y = fromPy(Y);
+            if (y < 0 || y > Y_MAX || x < -0.3 || x > X_MAX + 0.3) return;
+            const ms = masses();
+            if (!ms.length) { renderFeedback([['info', 'Record some voltages first, then plot their means here.']]); return; }
+            // Snap sideways to the nearest mass the student measured: only the height is judged.
+            let best = null, bestD = Infinity;
+            for (const m of ms) { const d = Math.abs(parseFloat(m) - x); if (d < bestD) { bestD = d; best = m; } }
+            if (bestD > 0.3) { renderFeedback([['info', 'Click above one of your salt masses (the small blue marks on the x-axis).']]); return; }
+            placed[best] = Math.round(y * 100) / 100;
+            delete checked[best];
+            graphUnlocked = false;
+            updateLock();
+            drawPlot();
+        });
+
+        function checkPoints() {
+            const ms = masses();
+            if (!ms.length) { renderFeedback([['info', 'Record some voltages first.']]); return; }
+            const items = [];
+            let allOk = true;
+            for (const m of ms) {
+                if (placed[m] === undefined) { items.push(['todo', `${m} g: not placed yet.`]); allOk = false; continue; }
+                const diff = placed[m] - meanOf(m);
+                if (Math.abs(diff) <= PLOT_TOLERANCE + 1e-9) {
+                    checked[m] = 'ok'; items.push(['ok', `${m} g: correct.`]);
+                } else {
+                    checked[m] = diff > 0 ? 'high' : 'low'; allOk = false;
+                    items.push(['bad', `${m} g: too ${diff > 0 ? 'high' : 'low'}. Check your mean for this row, then where you placed the point.`]);
+                }
+            }
+            if (allOk) items.unshift(['done', 'All your points are correct! The computer graph is now unlocked — compare it with yours.']);
+            graphUnlocked = allOk;
+            updateLock();
+            drawPlot();
+            renderFeedback(items);
+        }
+
+        function clearPoints() {
+            placed = {}; checked = {}; graphUnlocked = false;
+            updateLock(); drawPlot(); renderFeedback([]);
+        }
+
+        function renderFeedback(items) {
+            const icon = { ok: '✓', bad: '✗', todo: '•', info: 'ℹ', done: '★' };
+            const colour = { ok: 'text-green-700', bad: 'text-red-700', todo: 'text-slate-500', info: 'text-blue-700', done: 'text-green-800 font-bold' };
+            document.getElementById('plot-feedback').innerHTML =
+                items.map(([k, t]) => `<li class="${colour[k]}">${icon[k]} ${t}</li>`).join('');
+        }
+
+        // ================================================================
+        // The computer's graph (unlocked once the student's plot is right)
+        // ================================================================
+        let myChart = null;
+        const TRIAL_COLOURS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+
+        function initChart() {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#64748b';
+            myChart = new Chart(document.getElementById('resultsChart').getContext('2d'), {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmtMass(c.parsed.x)} g → ${fmtVolt(c.parsed.y)} V` } }
+                    },
+                    scales: {
+                        x: { type: 'linear', min: 0, max: X_MAX, ticks: { stepSize: 1 },
+                             title: { display: true, text: 'Mass of salt / g', font: { weight: 'bold' } } },
+                        y: { min: 0, max: Y_MAX,
+                             title: { display: true, text: 'Voltage across the bulb / V', font: { weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!myChart) return;
+            const trials = Object.keys(readings).map(Number).sort((a, b) => a - b);
+            const sets = trials.map((t, i) => ({
+                label: `Trial ${t}`,
+                data: Object.keys(readings[t]).sort((a, b) => a - b).map(m => ({ x: parseFloat(m), y: readings[t][m] })),
+                borderColor: TRIAL_COLOURS[i % TRIAL_COLOURS.length],
+                backgroundColor: TRIAL_COLOURS[i % TRIAL_COLOURS.length],
+                pointRadius: 4, showLine: false
+            }));
+            const ms = masses();
+            if (ms.length) sets.push({
+                label: 'Mean', data: ms.map(m => ({ x: parseFloat(m), y: meanOf(m) })),
+                borderColor: '#0f172a', backgroundColor: '#0f172a', pointRadius: 6, pointStyle: 'crossRot',
+                showLine: true, borderWidth: 2, tension: 0.3
+            });
+            myChart.data.datasets = sets;
+            myChart.update();
+        }
+
+        function updateLock() {
+            document.getElementById('lock-overlay').style.display = graphUnlocked ? 'none' : 'flex';
+            document.getElementById('lock-icon').className = graphUnlocked ? 'fa-solid fa-lock-open ml-1' : 'fa-solid fa-lock ml-1';
+        }
+
+        function switchGraphMode(mode) {
+            document.getElementById('mode-plot').classList.toggle('hidden', mode !== 'plot');
+            document.getElementById('mode-auto').classList.toggle('hidden', mode !== 'auto');
+            const on = 'flex-1 px-4 py-2 rounded-md text-sm font-semibold bg-white shadow-sm text-blue-600';
+            const off = 'flex-1 px-4 py-2 rounded-md text-sm font-semibold text-slate-500 hover:text-blue-600';
+            document.getElementById('btn-mode-plot').className = mode === 'plot' ? on : off;
+            document.getElementById('btn-mode-auto').className = mode === 'auto' ? on : off;
+            if (mode === 'plot') resizePlot();
+            if (mode === 'auto' && myChart) myChart.resize();
+        }
+
+        // ================================================================
+        // Tabs and start-up
+        // ================================================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                const on = el.id === `tab-${tabId}`;
+                el.className = 'tab-btn flex-1 py-4 text-center font-semibold focus:outline-none transition-colors border-b-4 ' +
+                    (on ? 'text-blue-600 border-blue-600 bg-white' : 'text-slate-500 border-transparent hover:text-blue-600 hover:bg-slate-100');
+            });
+            document.getElementById(`content-${tabId}`).classList.add('active');
+            if (tabId === 'graph') { resizePlot(); if (myChart) myChart.resize(); }
+            if (tabId === 'experiment') resizeScene();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            beakerFactor = randomFactor(BEAKER_SPREAD);
+            readingFactor = randomFactor(READING_SPREAD);
+            switchTab('experiment');
+            switchGraphMode('plot');
+            resizeScene();
+            initChart();
+            updatePhysics();
+            dataChanged();
+            requestAnimationFrame(animate);
+        });
+        window.addEventListener('resize', () => { resizeScene(); resizePlot(); });
+    </script>
+</body>
+</html>
