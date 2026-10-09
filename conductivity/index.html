@@ -63,6 +63,18 @@
 </head>
 <body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
 
+    <!-- First name, asked once. Held in memory only: never saved, never sent. -->
+    <div id="name-gate" class="fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4">
+        <form onsubmit="startWithName(event)" class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-flask text-blue-500 mr-2"></i>Saltwater Conductivity Lab</h2>
+            <label for="name-input" class="block text-slate-600 mt-4 mb-2">Type your <b>first name</b> to start:</label>
+            <input id="name-input" maxlength="30" autocomplete="off" class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 text-lg text-center focus:border-blue-500 outline-none">
+            <p id="name-msg" class="text-sm text-red-600 h-5 mt-1"></p>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl mt-2">Start the lab</button>
+            <p class="text-xs text-slate-400 mt-3">Your name goes only into the file you export. Nothing is saved.</p>
+        </form>
+    </div>
+
     <div class="max-w-5xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
 
         <!-- Header -->
@@ -71,6 +83,7 @@
                 <i class="fa-solid fa-flask text-yellow-300 mr-3"></i>Saltwater Conductivity Lab
             </h1>
             <p class="text-blue-100 mt-2 text-sm md:text-base">Investigate how dissolved ions affect the flow of electricity!</p>
+            <p id="scientist-line" class="mt-3 text-sm font-semibold hidden"><i class="fa-solid fa-user mr-1"></i> Scientist: <span id="scientist-name"></span></p>
         </header>
 
         <!-- Navigation Tabs -->
@@ -88,6 +101,13 @@
 
         <!-- Main Content Area -->
         <div class="p-4 md:p-8">
+
+            <!-- Export: one click, the table and the student's own graph as one picture -->
+            <div class="flex justify-end mb-4">
+                <button onclick="exportWork()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 rounded-xl shadow-md text-sm">
+                    <i class="fa-solid fa-file-image mr-2"></i>Export my table and graph
+                </button>
+            </div>
 
             <!-- EXPERIMENT TAB -->
             <div id="content-experiment" class="tab-content active">
@@ -739,8 +759,8 @@
         const PM = { left: 70, right: 20, top: 20, bottom: 62 };
         const X_MAX = 10, Y_MAX = 8;
         const plot = document.getElementById('plot');
-        const pctx = plot.getContext('2d');
-        let plotScale = 1, plotCssScale = 1;
+        var pctx = plot.getContext('2d');
+        var plotScale = 1, plotCssScale = 1;
 
         const px = x => PM.left + x / X_MAX * (PW - PM.left - PM.right);
         const py = y => PH - PM.bottom - y / Y_MAX * (PH - PM.top - PM.bottom);
@@ -760,7 +780,8 @@
             drawPlot();
         }
 
-        function drawPlot() {
+        // Draws on the screen by default; the export passes its own canvas and scale.
+        function drawPlot(pctx = window.pctx, plotScale = window.plotScale) {
             pctx.setTransform(plotScale, 0, 0, plotScale, 0, 0);
             pctx.clearRect(0, 0, PW, PH);
             // Grid: minor 0.5 g and 0.2 V, major 1 g and 1 V
@@ -920,6 +941,103 @@
         }
 
         // ================================================================
+        // The student's first name and the one-click export
+        // ================================================================
+        // The name lives in this variable only: not in localStorage, not in the
+        // address, never sent anywhere. It appears in the exported picture so the
+        // teacher can see whose work it is (Cesar, 2026-10-09). A reload asks again.
+        let studentName = '';
+
+        function startWithName(e) {
+            e.preventDefault();
+            const name = document.getElementById('name-input').value.trim().replace(/\s+/g, ' ');
+            if (!name) { document.getElementById('name-msg').textContent = 'Please type your first name.'; return; }
+            studentName = name;
+            document.getElementById('scientist-name').textContent = name;
+            document.getElementById('scientist-line').classList.remove('hidden');
+            document.getElementById('name-gate').remove();
+        }
+
+        // One picture: the name and date, the results table with the student's own
+        // means, how many means and points were checked correct, and their own graph.
+        function exportWork() {
+            const ms = masses();
+            if (!ms.length) { alert('Record some voltages first, then export.'); return; }
+            const n = trialCount();
+            const W = 1400, PAD = 50, ROW = 40;
+            const colW = (W - 2 * PAD) / (n + 2);           // mass, trials, mean
+            const tableH = ROW * (ms.length + 2);
+            const graphW = W - 2 * PAD, graphH = graphW * PH / PW;
+            const H = PAD + 110 + tableH + 70 + graphH + PAD;
+
+            const c = document.createElement('canvas');
+            c.width = W; c.height = H;
+            const g = c.getContext('2d');
+            g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+            g.fillStyle = '#0f172a'; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+            g.font = '700 34px Inter, sans-serif';
+            g.fillText('Saltwater Conductivity Lab — my results', PAD, PAD + 30);
+            g.font = '600 24px Inter, sans-serif';
+            const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+            g.fillText(`First name: ${studentName || '(not given)'}`, PAD, PAD + 72);
+            g.fillStyle = '#475569'; g.textAlign = 'right';
+            g.fillText(date, W - PAD, PAD + 72);
+
+            // The table, laid out as on screen
+            let y = PAD + 100;
+            const cell = (text, col, row, opts = {}) => {
+                const x = PAD + col * colW, yy = y + row * ROW;
+                const w = (opts.span || 1) * colW;
+                if (opts.fill) { g.fillStyle = opts.fill; g.fillRect(x, yy, w, ROW); }
+                g.strokeStyle = '#94a3b8'; g.lineWidth = 1; g.strokeRect(x, yy, w, ROW);
+                g.fillStyle = opts.colour || '#0f172a';
+                g.font = (opts.bold ? '700 ' : '500 ') + '18px Inter, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText(text, x + w / 2, yy + ROW / 2);
+            };
+            cell('Mass of salt / g', 0, 0, { bold: true, fill: '#f1f5f9' });
+            cell('Voltage across the bulb / V', 1, 0, { bold: true, fill: '#f1f5f9', span: n + 1 });
+            cell('', 0, 1, { fill: '#f1f5f9' });
+            for (let t = 1; t <= n; t++) cell(`Trial ${t}`, t, 1, { bold: true, fill: '#f1f5f9' });
+            cell('Mean', n + 1, 1, { bold: true, fill: '#f1f5f9' });
+            const tint = { ok: '#dcfce7', dp: '#fef3c7', bad: '#fee2e2' };
+            const mark = { ok: ' ✓', dp: ' !', bad: ' ✗' };
+            ms.forEach((m, i) => {
+                cell(m, 0, i + 2, { bold: true });
+                for (let t = 1; t <= n; t++) {
+                    const v = readings[t] && readings[t][m];
+                    cell(v === undefined ? '' : fmtVolt(v), t, i + 2);
+                }
+                const st = meanStatus[m];
+                cell((studentMeans[m] || '').trim() + (mark[st] || ''), n + 1, i + 2, { fill: tint[st] || '#fffbeb' });
+            });
+
+            // What was checked, so the teacher sees how far the student got
+            y += tableH + 34;
+            const meansOk = ms.filter(m => meanStatus[m] === 'ok').length;
+            const pointsOk = ms.filter(m => checked[m] === 'ok').length;
+            g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillStyle = '#334155';
+            g.font = '600 20px Inter, sans-serif';
+            g.fillText(`Means checked correct: ${meansOk} of ${ms.length}     ·     Graph points checked correct: ${pointsOk} of ${ms.length}`, PAD, y);
+
+            // The student's own graph, drawn fresh at export size
+            const off = document.createElement('canvas');
+            off.width = Math.round(graphW); off.height = Math.round(graphH);
+            drawPlot(off.getContext('2d'), graphW / PW);
+            g.drawImage(off, PAD, y + 20);
+            g.strokeStyle = '#cbd5e1'; g.strokeRect(PAD, y + 20, graphW, graphH);
+
+            const safe = (studentName || 'student').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'student';
+            c.toBlob(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `saltwater_lab_${safe}.png`;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+            }, 'image/png');
+        }
+
+        // ================================================================
         // Tabs and start-up
         // ================================================================
         function switchTab(tabId) {
@@ -944,6 +1062,7 @@
             updatePhysics();
             dataChanged();
             requestAnimationFrame(animate);
+            document.getElementById('name-input').focus();
         });
         window.addEventListener('resize', () => { resizeScene(); resizePlot(); });
     </script>
