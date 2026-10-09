@@ -123,7 +123,7 @@
                             <span><span class="inline-block w-4 h-4 rounded-full align-middle mr-1" style="background:#22c55e"></span>Cl⁻ moves to the anode (+)</span>
                             <span><span class="inline-block w-3 h-3 rounded-full align-middle mr-1 border border-slate-400 bg-white"></span>gas bubbles at both electrodes</span>
                         </div>
-                        <div class="mt-2 text-center text-sm text-slate-500 font-medium">Beaker with 250 mL distilled water</div>
+                        <div id="beaker-caption" class="mt-2 text-center text-sm text-slate-500 font-medium">Three beakers, one for each trial: 250 mL of distilled water each</div>
                     </div>
 
                     <!-- Right Column: Controls & Meters -->
@@ -165,35 +165,20 @@
 
                             <!-- State info -->
                             <div class="flex justify-between items-center mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <span class="text-slate-600 font-medium">Total Salt Dissolved:</span>
+                                <span class="text-slate-600 font-medium">Salt in each beaker:</span>
                                 <span class="text-2xl font-bold text-blue-700"><span id="salt-mass-display">0.00</span> <span class="text-sm text-blue-500">g</span></span>
                             </div>
                             <div class="flex justify-between items-center mb-4 text-sm text-slate-500 px-1">
-                                <span>Trial (beaker) number: <span id="trial-display" class="font-bold text-slate-700">1</span></span>
-                                <span>Maximum: 10.00 g</span>
+                                <span>Trial (beaker): <span id="trial-display" class="font-bold text-slate-700">—</span></span>
+                                <span>Steps of 0.50 g, up to 10.00 g</span>
                             </div>
 
-                            <!-- How much each press adds -->
-                            <div class="mb-3">
-                                <span class="text-slate-600 text-sm font-medium">Amount to add each time:</span>
-                                <span id="step-locked" class="hidden text-xs text-slate-500 ml-1">(locked: every trial uses the same amounts)</span>
-                                <div class="flex gap-2 mt-2">
-                                    <button onclick="setStep(0.5)" data-step="0.5" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">0.50 g</button>
-                                    <button onclick="setStep(1)" data-step="1" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">1.00 g</button>
-                                    <button onclick="setStep(2)" data-step="2" class="step-btn flex-1 py-2 rounded-lg border text-sm font-semibold">2.00 g</button>
-                                </div>
-                            </div>
-
-                            <button id="btn-add-salt" onclick="addSalt()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
-                                <i class="fa-solid fa-spoon mr-2"></i> Add 0.50 g Salt (NaCl)
+                            <button id="btn-prepare" onclick="prepareBeakers()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
+                                <i class="fa-solid fa-spoon mr-2"></i> Fill the three beakers
                             </button>
 
                             <button id="btn-record" onclick="recordDataPoint()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
                                 <i class="fa-solid fa-clipboard-check mr-2"></i> Record Voltage
-                            </button>
-
-                            <button id="btn-refill" onclick="refillBeaker()" class="w-full bg-cyan-100 hover:bg-cyan-200 text-cyan-800 font-bold py-3 px-4 rounded-xl flex items-center justify-center mb-3">
-                                <i class="fa-solid fa-faucet-drip mr-2"></i> Empty &amp; Refill Beaker (next trial)
                             </button>
 
                             <button id="btn-reset" onclick="resetLab()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center">
@@ -274,7 +259,6 @@
         // ================================================================
         let saltMass = 0; // grams
         const MAX_SALT = 10; // grams: 40 g/L, just above seawater (~35 g/L = 8.75 g in 250 mL)
-        let saltStep = 0.5; // grams added per press: 0.5, 1 or 2
         let current = 0.09; // mA
         let voltage = 0.03; // V (measured across the series bulb)
         let trialNumber = 1; // one trial = one beaker of fresh water
@@ -345,150 +329,155 @@
         // ================================================================
         // Controls
         // ================================================================
+        // ================================================================
+        // The procedure: three beakers for every amount of salt
+        // ================================================================
+        // As a lab really does it (Cesar, 2026-10-09): for each amount of salt the
+        // student makes up three beakers, one per trial, measures each in turn, then
+        // moves to the next amount. Amounts go up in 0.50 g steps from 0.00 g
+        // (distilled water, the control) to 10.00 g. Each beaker is its own
+        // preparation, so it gets its own small random difference (beakerFactor)
+        // and its own meter noise (readingFactor).
+        // This replaced, the same day, one beaker per trial with salt added to it
+        // amount after amount: students lost their place, and its trials were not
+        // independent samples.
+        const STEP = 0.5, TRIALS = 3;
+        let phase = 'bench';   // 'bench' | 'preparing' | 'measure' | 'swap' | 'rowdone' | 'finished'
+        let amount = 0;        // the amount of salt being worked on, g
+        let swap = null;       // {t0, next, loaded} while one beaker slides out and the next in
+        let slideX = 0;        // the beaker's horizontal offset during a swap
+        let benchGrains = [];  // salt falling into the three bench beakers
+        const SWAP_MS = 800;
+
         function updateUI() {
             document.getElementById('meter-current').innerText = fmtCurrent(current);
             document.getElementById('meter-voltage').innerText = fmtVolt(voltage);
-            document.getElementById('salt-mass-display').innerText = fmtMass(saltMass);
-            document.getElementById('trial-display').innerText = trialNumber;
+            document.getElementById('salt-mass-display').innerText = fmtMass(amount);
+            const inCircuit = phase === 'measure' || phase === 'swap';
+            document.getElementById('trial-display').innerText = inCircuit ? `${trialNumber} of ${TRIALS}` : '—';
+            document.getElementById('beaker-caption').innerText = inCircuit
+                ? `Trial ${trialNumber} beaker: 250 mL of water with ${fmtMass(amount)} g of salt`
+                : 'Three beakers, one for each trial: 250 mL of distilled water each';
 
-            const btnAdd = document.getElementById('btn-add-salt');
-            const blocked = addBlockedReason();
-            if (blocked) {
-                btnAdd.disabled = true;
-                btnAdd.classList.add('opacity-50', 'cursor-not-allowed');
-                btnAdd.innerHTML = `<i class="fa-solid fa-ban mr-2"></i> Add ${fmtMass(saltStep)} g Salt — ${recordedHere() ? 'stop here' : 'record first'}`;
-            } else {
-                btnAdd.disabled = false;
-                btnAdd.classList.remove('opacity-50', 'cursor-not-allowed');
-                btnAdd.innerHTML = `<i class="fa-solid fa-spoon mr-2"></i> Add ${fmtMass(saltStep)} g Salt (NaCl)`;
-            }
-
-            const locked = stepLocked();
-            document.getElementById('step-locked').classList.toggle('hidden', !locked);
-            document.querySelectorAll('.step-btn').forEach(b => {
-                b.disabled = locked && parseFloat(b.dataset.step) !== saltStep;
-                const on = parseFloat(b.dataset.step) === saltStep;
-                b.className = 'step-btn flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors ' +
-                    (on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50') +
-                    (b.disabled ? ' opacity-40 cursor-not-allowed' : '');
-            });
+            const prep = document.getElementById('btn-prepare');
+            prep.disabled = phase !== 'bench';
+            prep.innerHTML = phase === 'finished'
+                ? '<i class="fa-solid fa-flag-checkered mr-2"></i> All amounts up to 10.00 g are done'
+                : amount === 0
+                    ? '<i class="fa-solid fa-faucet-drip mr-2"></i> Fill the three beakers with distilled water'
+                    : `<i class="fa-solid fa-spoon mr-2"></i> Weigh ${fmtMass(amount)} g of salt into each beaker`;
+            const rec = document.getElementById('btn-record');
+            rec.disabled = phase !== 'measure';
+            for (const b of [prep, rec]) b.classList.toggle('opacity-50', b.disabled), b.classList.toggle('cursor-not-allowed', b.disabled);
             updateGuide();
         }
 
-        function setStep(step) {
-            if (stepLocked()) return;
-            saltStep = step;
-            updateUI();
-        }
-
-        // ================================================================
-        // The procedure: trial 1 sets the plan, the guide says what to do next
-        // ================================================================
-        // Students got lost (Cesar, 2026-10-09): they added salt before recording,
-        // changed the step between trials, or refilled half-way, and the table filled
-        // with gaps. So: trial 1 decides the amounts; the step size locks after the
-        // first reading; salt cannot be added until the current amount is recorded;
-        // later trials stop at trial 1's last amount; refilling an unfinished trial
-        // asks first. The guide box names the one next action.
-        const TRIALS_WANTED = 3;
-        const stepLocked = () => Object.keys(readings).some(t => Object.keys(readings[t]).length);
-        const plan = () => Object.keys(readings[1] || {}).sort((a, b) => parseFloat(a) - parseFloat(b));
-        const lastPlanned = () => { const p = plan(); return p.length ? parseFloat(p[p.length - 1]) : null; };
-        const recordedHere = () => !!(readings[trialNumber] && readings[trialNumber][fmtMass(saltMass)] !== undefined);
-        const missingIn = t => plan().filter(m => !(readings[t] && readings[t][m] !== undefined));
-        const trialDone = t => t > 1 && plan().length > 0 && missingIn(t).length === 0;
-
-        // Why "Add salt" is not allowed right now, or '' when it is.
-        function addBlockedReason() {
-            if (!recordedHere()) return `Record the voltage at ${fmtMass(saltMass)} g first.`;
-            if (trialNumber > 1 && lastPlanned() !== null && saltMass + saltStep > lastPlanned() + 1e-9)
-                return `Trial 1 stopped at ${fmtMass(lastPlanned())} g, so this trial stops there too.`;
-            if (saltMass + saltStep > MAX_SALT + 1e-9) return saltMass >= MAX_SALT - 1e-9 ? 'Maximum salt reached (10.00 g).' : `${fmtMass(saltStep)} g would go over 10.00 g.`;
-            return '';
-        }
+        const rowDone = m => [...Array(TRIALS).keys()].every(i => readings[i + 1] && readings[i + 1][m] !== undefined);
 
         function updateGuide() {
             const now = document.getElementById('guide-now');
             if (!now) return;
-            const here = fmtMass(saltMass);
+            const m = fmtMass(amount);
+            const done = masses().filter(rowDone);
             let msg;
-            if (!recordedHere()) msg = `Trial ${trialNumber}: press <b>Record Voltage</b> for ${here} g.`;
-            else if (trialNumber === 1) {
-                msg = saltMass + saltStep <= MAX_SALT + 1e-9
-                    ? `Trial 1: press <b>Add ${fmtMass(saltStep)} g Salt</b>, then record again. When you have enough amounts, press <b>Empty &amp; Refill</b> for trial 2.`
-                    : 'Trial 1 is finished. Press <b>Empty &amp; Refill</b> for trial 2.';
-            } else if (missingIn(trialNumber).length) {
-                msg = `Trial ${trialNumber}: press <b>Add ${fmtMass(saltStep)} g Salt</b>, then record again (next: ${missingIn(trialNumber)[0]} g).`;
-            } else if (trialNumber < TRIALS_WANTED) msg = `Trial ${trialNumber} is finished. Press <b>Empty &amp; Refill</b> for trial ${trialNumber + 1}.`;
-            else msg = `You have ${TRIALS_WANTED} trials for every amount. Go to the <b>Data Table</b> and work out your means.`;
+            if (phase === 'bench') msg = amount === 0
+                ? 'Start with the control: press <b>Fill the three beakers with distilled water</b> (0.00 g of salt).'
+                : `Next amount: <b>${m} g</b>. Press <b>Weigh ${m} g of salt into each beaker</b>.`;
+            else if (phase === 'preparing') msg = amount === 0 ? 'Filling the three beakers…' : `Weighing ${m} g of salt into each beaker…`;
+            else if (phase === 'measure') msg = `<b>Trial ${trialNumber} of ${TRIALS}</b> · ${m} g: press <b>Record Voltage</b>.`;
+            else if (phase === 'swap') msg = `Next beaker: <b>trial ${swap ? swap.next : trialNumber} of ${TRIALS}</b> · ${m} g…`;
+            else if (phase === 'rowdone') msg = `✓ <b>${m} g done</b>: 3 trials recorded. Getting the next three beakers…`;
+            else msg = 'All amounts from 0.00 g to 10.00 g are done. Go to the <b>Data Table</b>.';
             now.innerHTML = msg;
 
-            // Progress: one line per trial so far
-            const p = plan();
             const lines = [];
-            for (let t = 1; t <= Math.max(trialNumber, 1); t++) {
-                const got = Object.keys(readings[t] || {}).length;
-                const of = t === 1 ? '' : ` of ${p.length}`;
-                const done = t === 1 ? (t < trialNumber ? ' ✓' : '') : (trialDone(t) ? ' ✓' : '');
-                lines.push(`<div>${t === trialNumber ? '▶' : '&nbsp;&nbsp;'} Trial ${t}: ${got}${of} amounts recorded${done}</div>`);
+            if (phase === 'measure' || phase === 'swap') {
+                const dots = [...Array(TRIALS).keys()].map(i => readings[i + 1] && readings[i + 1][m] !== undefined ? '●' : '○').join(' ');
+                lines.push(`<div>This amount (${m} g): ${dots}</div>`);
             }
-            if (p.length) lines.push(`<div class="text-slate-400">Amounts (set by trial 1): ${p.join(', ')} g</div>`);
+            lines.push(`<div>Amounts finished: ${done.length ? done.join(', ') + ' g' : 'none yet'}</div>`);
+            if (done.length && phase === 'bench') lines.push('<div class="text-slate-400">Stop when you have enough amounts for your plan, then go to the Data Table.</div>');
             document.getElementById('guide-progress').innerHTML = lines.join('');
         }
 
-        function addSalt() {
-            const why = addBlockedReason();
-            if (why) { say(why); return; }
-            // Round to two decimals so repeated steps never drift (0.1 + 0.2 trap)
-            saltMass = Math.round((saltMass + saltStep) * 100) / 100;
-            readingFactor = randomFactor(READING_SPREAD);
-            sprinkleSalt();
-            updatePhysics();
-            say('');
+        // The bench: no beaker is in the circuit, so the meters read zero.
+        function enterBench() {
+            phase = amount > MAX_SALT + 1e-9 ? 'finished' : 'bench';
+            if (phase === 'finished') amount = MAX_SALT;
+            saltMass = 0; current = 0; voltage = 0; ions = []; bubbles = []; slideX = 0; swap = null;
+            trialNumber = 1;
+            updateUI();
         }
 
-        // A new trial: fresh distilled water, same results table.
-        function refillBeaker() {
-            const got = Object.keys(readings[trialNumber] || {}).length;
-            if (!got) { say(`Trial ${trialNumber} has no readings yet — record some before refilling.`); return; }
-            const missing = trialNumber > 1 ? missingIn(trialNumber) : [];
-            if (missing.length && !confirm(`Trial ${trialNumber} is missing ${missing.join(' g, ')} g. Empty the beaker anyway and start trial ${trialNumber + 1}?`)) return;
-            trialNumber++;
-            saltMass = 0;
+        function prepareBeakers() {
+            if (phase !== 'bench') return;
+            phase = 'preparing';
+            if (amount > 0 && !reduceMotion) {
+                for (const x of BENCH_X) for (let i = 0; i < 14; i++)
+                    benchGrains.push({ x: x - 22 + Math.random() * 44, y: 120 - Math.random() * 50, vy: 160 + Math.random() * 90 });
+            }
+            updateUI();
+            setTimeout(() => beginSwap(1, true), reduceMotion ? 0 : 900);
+        }
+
+        // One beaker into the circuit: its own preparation and its own reading.
+        function loadBeaker(t) {
+            trialNumber = t;
+            saltMass = amount;
             beakerFactor = randomFactor(BEAKER_SPREAD);
             readingFactor = randomFactor(READING_SPREAD);
-            bubbles = [];
+            ions = []; bubbles = [];
             updatePhysics();
             renderTable();
-            say(`Fresh water in the beaker. You are now on trial ${trialNumber}.`);
+        }
+
+        // Slide the old beaker out to the right and the next one in from the left.
+        // `fresh`: coming from the bench, so there is no old beaker to slide out.
+        function beginSwap(next, fresh = false) {
+            if (reduceMotion) { loadBeaker(next); phase = 'measure'; slideX = 0; updateUI(); return; }
+            phase = 'swap';
+            swap = { t0: performance.now() - (fresh ? SWAP_MS / 2 : 0), next, loaded: false };
+            if (fresh) { loadBeaker(next); swap.loaded = true; slideX = -SW; }
+            updateUI();
+        }
+
+        function stepSwap() {
+            if (!swap) return;
+            const e = performance.now() - swap.t0, half = SWAP_MS / 2;
+            if (e < half) { slideX = e / half * SW; return; }
+            if (!swap.loaded) { loadBeaker(swap.next); swap.loaded = true; }
+            if (e < SWAP_MS) { slideX = -SW * (1 - (e - half) / half); return; }
+            slideX = 0; swap = null; phase = 'measure'; updateUI();
+        }
+
+        function finishRow() {
+            phase = 'rowdone';
+            ions = []; bubbles = []; current = 0; voltage = 0;
+            updateUI();
+            setTimeout(() => { amount = Math.round((amount + STEP) * 100) / 100; enterBench(); }, reduceMotion ? 600 : 1800);
         }
 
         function recordDataPoint() {
-            const m = fmtMass(saltMass);
+            if (phase !== 'measure') return;
+            const m = fmtMass(amount);
             const v = parseFloat(fmtVolt(voltage));
-            readings[trialNumber] = readings[trialNumber] || {};
-            if (readings[trialNumber][m] !== undefined) {
-                if (!confirm(`You already recorded ${m} g in trial ${trialNumber} (${fmtVolt(readings[trialNumber][m])} V). Replace it with ${fmtVolt(v)} V?`)) return;
-            }
-            readings[trialNumber][m] = v;
+            (readings[trialNumber] = readings[trialNumber] || {})[m] = v;
             delete meanStatus[m];   // this row's mean has changed
             dataChanged();
-            updateUI();
-            say(`Recorded: ${m} g → ${fmtVolt(v)} V in trial ${trialNumber}.`);
+            say(`Recorded: ${m} g, trial ${trialNumber} → ${fmtVolt(v)} V.`);
+            if (trialNumber < TRIALS) beginSwap(trialNumber + 1);
+            else finishRow();
         }
 
         function resetLab() {
             if (Object.keys(readings).length && !confirm('Delete ALL your recorded data and start again?')) return;
-            saltMass = 0;
-            trialNumber = 1;
             readings = {};
             placed = {};
             studentMeans = {};
             meanStatus = {};
-            beakerFactor = randomFactor(BEAKER_SPREAD);
-            readingFactor = randomFactor(READING_SPREAD);
-            bubbles = [];
-            updatePhysics();
+            amount = 0;
+            benchGrains = [];
+            enterBench();
             dataChanged();
             say('');
             switchTab('experiment');
@@ -541,13 +530,6 @@
             while (na.length < pairs) na.push(newIon('na'));
             while (cl.length < pairs) cl.push(newIon('cl'));
             ions = na.slice(0, pairs).concat(cl.slice(0, pairs));
-        }
-
-        function sprinkleSalt() {
-            if (reduceMotion) return;
-            for (let i = 0; i < 28; i++) {
-                grains.push({ x: 270 + Math.random() * 60, y: 150 - Math.random() * 40, vy: 150 + Math.random() * 80 });
-            }
         }
 
         function resizeScene() {
@@ -620,9 +602,54 @@
             sctx.fillText(text, x, y);
         }
 
+        // The bench: three beakers, one per trial, for the amount being worked on.
+        const BENCH_X = [110, 300, 490];
+        function drawBench() {
+            const finishedRow = phase === 'rowdone';
+            const salted = finishedRow || (phase === 'preparing' && amount > 0);
+            const title = phase === 'finished' ? 'All amounts are done'
+                : finishedRow ? `✓ ${fmtMass(amount)} g done: 3 trials recorded`
+                : `Next amount: ${fmtMass(amount)} g${amount === 0 ? ' (distilled water)' : ' of salt in each beaker'}`;
+            label(title, SW / 2, 50, { size: 24, weight: 800, colour: finishedRow ? '#15803d' : '#1e293b' });
+            label('One beaker for each trial · 250 mL of water in each', SW / 2, 84, { size: 14, weight: 500, colour: '#64748b' });
+            const top = 200, bottom = 400, half = 72, waterTop = 245;
+            BENCH_X.forEach((x, i) => {
+                const tint = salted ? amount / MAX_SALT : 0;
+                const wg = sctx.createLinearGradient(0, waterTop, 0, bottom);
+                wg.addColorStop(0, `rgba(186, 230, 253, ${0.55 + 0.2 * tint})`);
+                wg.addColorStop(1, `rgba(56, 189, 248, ${0.55 + 0.25 * tint})`);
+                sctx.fillStyle = wg;
+                sctx.beginPath(); sctx.roundRect(x - half + 4, waterTop, 2 * half - 8, bottom - waterTop - 2, [0, 0, 10, 10]); sctx.fill();
+                // a few ions, more with more salt, fixed in place so they do not flicker
+                if (salted) {
+                    const n = Math.round(2 + 2 * amount);
+                    for (let j = 0; j < n; j++) {
+                        const hx = ((j * 73 + i * 31) % 97) / 97, hy = ((j * 41 + i * 17) % 89) / 89;
+                        sctx.beginPath(); sctx.arc(x - half + 14 + hx * (2 * half - 28), waterTop + 12 + hy * (bottom - waterTop - 26), j % 2 ? 4 : 5, 0, Math.PI * 2);
+                        sctx.fillStyle = j % 2 ? '#f59e0b' : '#22c55e'; sctx.fill();
+                    }
+                }
+                sctx.strokeStyle = '#94a3b8'; sctx.lineWidth = 5;
+                sctx.beginPath(); sctx.moveTo(x - half, top); sctx.lineTo(x - half, bottom - 10); sctx.arcTo(x - half, bottom + 2, x - half + 12, bottom + 2, 12);
+                sctx.lineTo(x + half - 12, bottom + 2); sctx.arcTo(x + half, bottom + 2, x + half, bottom - 10, 12); sctx.lineTo(x + half, top); sctx.stroke();
+                label(`Trial ${i + 1}`, x, bottom + 32, { size: 18, weight: 800, colour: '#1e293b' });
+                label(salted ? `${fmtMass(amount)} g salt` : '0.00 g salt', x, bottom + 56, { size: 13, weight: 600, colour: '#64748b' });
+                if (finishedRow) {
+                    sctx.beginPath(); sctx.arc(x, top - 28, 18, 0, Math.PI * 2); sctx.fillStyle = '#16a34a'; sctx.fill();
+                    label('✓', x, top - 27, { size: 20, weight: 800, colour: '#fff' });
+                }
+            });
+            sctx.fillStyle = '#ffffff';
+            for (const g of benchGrains) {
+                sctx.beginPath(); sctx.arc(g.x, g.y, 2.4, 0, Math.PI * 2); sctx.fill();
+                sctx.strokeStyle = '#94a3b8'; sctx.lineWidth = 0.6; sctx.stroke();
+            }
+        }
+
         function drawScene() {
             sctx.setTransform(sceneScale, 0, 0, sceneScale, 0, 0);
             sctx.clearRect(0, 0, SW, SH);
+            if (phase === 'bench' || phase === 'preparing' || phase === 'rowdone' || phase === 'finished') { drawBench(); return; }
 
             // Wires. Battery + -> bulb -> anode; battery - -> cathode.
             line([[152, 95], [377, 95]], '#ef4444');
@@ -661,6 +688,8 @@
             sctx.fillText(fmtVolt(voltage) + ' V', 400, 33);
             label('voltmeter', 505, 32, { size: 12, colour: '#64748b', weight: 500 });
 
+            // The beaker and everything in it slide during a swap; the electrodes stay.
+            sctx.save(); sctx.translate(slideX, 0);
             // Beaker: water deepens in colour with salt
             const tint = saltMass / MAX_SALT;
             const wg = sctx.createLinearGradient(0, WATER.top, 0, WATER.bottom);
@@ -689,6 +718,8 @@
                 label(na ? '+' : '−', ion.x, ion.y + 0.5, { colour: '#fff', size: na ? 11 : 14, weight: 800 });
             }
 
+            sctx.restore();
+
             // Electrodes, on top, with their names
             for (const [x, name, sign, colour] of [[CATHODE_X, 'cathode', '−', '#1f2937'], [ANODE_X, 'anode', '+', '#dc2626']]) {
                 const eg = sctx.createLinearGradient(x - ELECTRODE_W / 2, 0, x + ELECTRODE_W / 2, 0);
@@ -698,6 +729,17 @@
                 const inward = x === CATHODE_X ? 1 : -1;
                 roundRect(x + inward * 16 - (inward < 0 ? 84 : 0), 196, 84, 26, 6, 'rgba(255,255,255,0.92)', colour);
                 label(`${name} (${sign})`, x + inward * 16 + inward * 42, 209, { colour, size: 13, weight: 700 });
+            }
+
+            // Which beaker this is: big enough to notice the change
+            roundRect(10, 8, 250, 52, 10, '#4f46e5');
+            label(`Trial ${trialNumber} of ${TRIALS}`, 20, 26, { size: 18, weight: 800, colour: '#fff', align: 'left' });
+            label(`${fmtMass(amount)} g of salt in this beaker`, 20, 47, { size: 12, weight: 600, colour: '#c7d2fe', align: 'left' });
+            const m = fmtMass(amount);
+            for (let i = 0; i < TRIALS; i++) {
+                const on = readings[i + 1] && readings[i + 1][m] !== undefined;
+                sctx.beginPath(); sctx.arc(212 + i * 16, 34, 5.5, 0, Math.PI * 2);
+                sctx.fillStyle = on ? '#a5f3fc' : (i + 1 === trialNumber ? '#ffffff' : 'rgba(255,255,255,0.3)'); sctx.fill();
             }
 
             // Salt falling in
@@ -713,6 +755,9 @@
             const dt = lastT === null ? 0 : Math.min(0.05, (t - lastT) / 1000);
             lastT = t;
             if (!reduceMotion) step(dt);
+            stepSwap();
+            for (const g of benchGrains) g.y += g.vy * dt;
+            benchGrains = benchGrains.filter(g => g.y < 250);
             drawScene();
             requestAnimationFrame(animate);
         }
@@ -747,7 +792,7 @@
                 '<th rowspan="2">Mass of salt / g<br><span class="font-normal text-slate-500">(± 0.01 g)</span></th>' +
                 `<th colspan="${n + 1}">Voltage across the bulb / V <span class="font-normal text-slate-500">(± 0.01 V)</span></th>` +
                 '</tr><tr>';
-            for (let t = 1; t <= n; t++) html += `<th class="${t === trialNumber ? 'current-trial' : ''}">Trial ${t}</th>`;
+            for (let t = 1; t <= n; t++) html += `<th class="${t === trialNumber && (phase === 'measure' || phase === 'swap') ? 'current-trial' : ''}">Trial ${t}</th>`;
             html += '<th>Mean</th></tr></thead><tbody>';
             for (const m of ms) {
                 html += `<tr><td class="font-semibold">${m}</td>`;
@@ -1133,7 +1178,7 @@
             switchGraphMode('plot');
             resizeScene();
             initChart();
-            updatePhysics();
+            enterBench();
             dataChanged();
             requestAnimationFrame(animate);
             document.getElementById('name-input').focus();
