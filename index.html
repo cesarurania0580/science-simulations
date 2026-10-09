@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Science Simulations</title>
-<meta name="description" content="Interactive science simulations for middle school: launch rockets, light bulbs with salt water, grow yeast and fire particles at gold foil.">
+<meta name="description" content="Interactive science simulations for middle school: launch rockets, drop parachutes, light bulbs with salt water, grow yeast and fire particles at gold foil.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
@@ -92,13 +92,12 @@
   @keyframes float { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-10px) rotate(6deg); } }
 
   /* Cards */
+  /* Flex, not grid: an odd number of cards centres its last row. */
   .grid {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex; flex-wrap: wrap; justify-content: center;
     gap: 26px;
-    max-width: 880px; margin: 0 auto;
   }
-  @media (min-width: 700px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .grid > .card { flex: 0 1 320px; max-width: 100%; }
 
   .card {
     --c1: #ff7a59; --c2: #ffb200; --deep: #a33a00;
@@ -172,6 +171,7 @@
   .circuit { --c1: #ffcf24; --c2: #2bd9a3; --deep: #0b7a57; }
   .yeast   { --c1: #ff4fa3; --c2: #a66bff; --deep: #a01a63; }
   .atom    { --c1: #3d7bff; --c2: #3ddcff; --deep: #1846b8; }
+  .chute   { --c1: #6366f1; --c2: #c084fc; --deep: #4c1d95; }
 
   footer {
     text-align: center; margin-top: 48px;
@@ -200,6 +200,15 @@
         <h2>Bottle Rocket Lab</h2>
         <p>How does the amount of water change how high a rocket flies?</p>
         <span class="go">Launch <span class="arrow" aria-hidden="true">→</span></span>
+      </div>
+    </a>
+
+    <a class="card chute" href="paper-parachute/">
+      <div class="art"><span class="chip">Physics</span><span class="emoji" aria-hidden="true">🪂</span></div>
+      <div class="body">
+        <h2>Paper Parachute Lab</h2>
+        <p>Does a bigger canopy fall more slowly? Time it yourself, then try a sensor.</p>
+        <span class="go">Drop it <span class="arrow" aria-hidden="true">→</span></span>
       </div>
     </a>
 

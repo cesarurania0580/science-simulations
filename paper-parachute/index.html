@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper Parachute Lab</title>
+<!--
+  Grade 6 · Criteria B and C training (Cesar, 2026-10-09). Runs before the Quanta
+  mock "Paper Parachutes: Criteria B and C", whose numbers it reproduces.
+  One offline file: no network, no libraries, nothing saved. Built on the Bottle
+  Rocket Lab: the same three tabs, the same checked means and bars.
+
+  What is new: students TIME each fall themselves. A partner lets go at a moment
+  they cannot predict, the student presses Start when it drops and Stop when the
+  load lands, and the time recorded is the real time between their two presses,
+  so their own reaction time is in the data (the mock's Q16 limitation, felt).
+  A timing sensor can be switched on instead (the mock's Q18 improvement), and
+  the table tab compares how far apart the repeats are with each method.
+  A press far too early or too late is a MISTAKE, not a limitation: the drop is
+  not recorded and the student repeats it (the mock's Q17).
+  Bar graphs only: the Grade 6 unit never asks for line or scatter graphs.
+-->
+<style>
+  :root {
+    --ink: #1e293b; --muted: #64748b; --line: #cbd5e1; --bg: #f5f3ff; --card: #ffffff;
+    --blue: #2563eb; --violet: #7c3aed; --green: #16a34a; --green-soft: #dcfce7;
+    --red: #dc2626; --red-soft: #fee2e2; --amber: #b45309; --amber-soft: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+         color: var(--ink); background: var(--bg); }
+  header { background: linear-gradient(90deg, #6d28d9, #db2777); color: #fff; text-align: center; padding: 18px 12px; }
+  header h1 { margin: 0; font-size: 1.7rem; }
+  header p { margin: 6px 0 0; opacity: .92; }
+  .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
+  nav { display: flex; background: #fff; border-bottom: 1px solid var(--line); }
+  nav button { flex: 1; padding: 14px 6px; border: 0; background: none; font: inherit; font-weight: 700;
+               color: var(--muted); border-bottom: 4px solid transparent; cursor: pointer; }
+  nav button.on { color: var(--violet); border-bottom-color: var(--violet); }
+  .tab { display: none; } .tab.on { display: block; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  h2 { margin: 0 0 10px; font-size: 1.15rem; }
+  .muted { color: var(--muted); }
+  .small { font-size: .9rem; }
+  canvas { display: block; width: 100%; touch-action: none; }
+  .btn { border: 0; border-radius: 10px; padding: 12px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-blue { background: var(--violet); color: #fff; } .btn-green { background: var(--green); color: #fff; }
+  .btn-grey { background: #e2e8f0; color: var(--ink); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .big { font-size: 1.6rem; font-weight: 800; color: var(--violet); }
+  input[type=range] { width: 100%; }
+  .num { width: 6rem; padding: 8px; font: inherit; font-size: 1.1rem; border: 2px solid var(--line); border-radius: 8px; text-align: center; }
+  .same { background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; }
+  .same li { margin: 2px 0; }
+  .msg { min-height: 1.4em; font-weight: 600; margin: 8px 0 0; }
+  .ok { color: var(--green); } .bad { color: var(--red); } .info { color: var(--blue); } .warn { color: var(--amber); }
+  /* timing method switch */
+  .seg { display: inline-flex; border: 2px solid var(--violet); border-radius: 12px; overflow: hidden; }
+  .seg button { border: 0; background: #fff; color: var(--violet); font: inherit; font-weight: 700; padding: 9px 14px; cursor: pointer; }
+  .seg button.on { background: var(--violet); color: #fff; }
+  .seg button:disabled { cursor: not-allowed; opacity: .5; }
+  /* the stopwatch */
+  .watch { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px;
+           background: #0f172a; color: #e2e8f0; border-radius: 14px; padding: 12px 14px; }
+  .watch .face { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 2.4rem; font-weight: 700;
+                 color: #a7f3d0; min-width: 7.5ch; font-variant-numeric: tabular-nums; }
+  .watch .face.sensor { color: #fde68a; }
+  .watch .lab { font-size: .8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
+  .ssbtn { border: 0; border-radius: 50%; width: 84px; height: 84px; font: inherit; font-weight: 800; font-size: 1rem;
+           cursor: pointer; background: #22c55e; color: #052e16; box-shadow: 0 5px 0 #15803d; touch-action: manipulation; }
+  .ssbtn.stop { background: #f87171; color: #450a0a; box-shadow: 0 5px 0 #b91c1c; }
+  .ssbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #15803d; }
+  .ssbtn:disabled { opacity: .35; cursor: not-allowed; }
+  .callout { font-weight: 800; font-size: 1.15rem; color: var(--violet); min-height: 1.6em; margin-top: 10px; }
+  /* the results table, as a scientist lays it out */
+  .sci { border-collapse: collapse; margin: 0 auto; }
+  .sci th, .sci td { border: 1px solid #94a3b8; padding: 8px 12px; text-align: center; }
+  .sci th { background: #f1f5f9; }
+  .sci td { font-variant-numeric: tabular-nums; min-width: 4.5rem; }
+  .sci td.mean { background: #fffbeb; }
+  .sci td.m-ok { background: var(--green-soft); } .sci td.m-dp { background: var(--amber-soft); } .sci td.m-bad { background: var(--red-soft); }
+  .mean-in { width: 4.6rem; text-align: center; padding: 3px; border: 1px solid #94a3b8; border-radius: 6px; font: inherit; }
+  @media (max-width: 600px) { .sci th, .sci td { padding: 5px 5px; font-size: .85rem; min-width: 2.8rem; } .mean-in { width: 3.4rem; } }
+  ul.fb { list-style: none; padding: 0; margin: 12px 0 0; } ul.fb li { margin: 3px 0; }
+  .compare { margin: 16px auto 0; max-width: 620px; background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .compare table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  .compare th, .compare td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: center; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪂 Paper Parachute Lab</h1>
+  <p>How does the area of the canopy affect the time a paper parachute takes to fall 2 m?</p>
+</header>
+<nav>
+  <button id="t-drop" onclick="tab('drop')">1. Drop</button>
+  <button id="t-table" onclick="tab('table')">2. Results table</button>
+  <button id="t-graph" onclick="tab('graph')">3. Bar graph</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- DROP -->
+  <section id="drop" class="tab">
+    <div class="grid">
+      <div class="card">
+        <canvas id="scene" aria-label="A paper parachute held at the 2 metre mark on a wall with a height scale"></canvas>
+      </div>
+      <div class="card">
+        <h2>Area of the canopy</h2>
+        <div class="row" style="justify-content:space-between">
+          <span class="muted">Choose the area:</span>
+          <span class="big"><span id="area-out">300</span> cm²</span>
+        </div>
+        <input type="range" id="area" min="100" max="500" step="100" value="300" aria-label="Area of the canopy, square centimetres">
+        <div class="row small muted" style="justify-content:space-between"><span>100 cm²</span><span>300 cm²</span><span>500 cm²</span></div>
+
+        <div class="same small" style="margin-top:12px">
+          <b>Kept the same every drop:</b>
+          <ul style="margin:6px 0 0; padding-left:18px">
+            <li>the same paper, four 30 cm strings and a 10 g load</li>
+            <li>dropped from the 2 m mark on the wall</li>
+            <li>the fan off and the windows closed</li>
+          </ul>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="row" style="justify-content:space-between">
+            <b>How the fall is timed:</b>
+            <div class="seg" role="group" aria-label="Timing method">
+              <button id="m-hand" onclick="setMethod('hand')">⏱ By hand</button>
+              <button id="m-sensor" onclick="setMethod('sensor')">📡 Timing sensor</button>
+            </div>
+          </div>
+          <p class="small muted" id="method-help" style="margin:8px 0 0"></p>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-blue" id="drop-btn" onclick="startDrop()">🪂 Drop it!</button>
+          <span class="small muted">Drop number <b id="drop-n">1</b></span>
+        </div>
+
+        <div class="watch">
+          <button class="ssbtn" id="ss-btn" onclick="pressWatch()" disabled aria-label="Start or stop the stopwatch">START</button>
+          <div>
+            <div class="lab" id="watch-lab">Stopwatch</div>
+            <div class="face" id="face">0.00 s</div>
+          </div>
+        </div>
+        <p class="small muted" id="key-tip" style="margin:6px 0 0">Tip: you can also press the <b>space bar</b> to start and stop.</p>
+        <div class="callout" id="callout" aria-live="assertive"></div>
+
+        <div style="margin-top:6px">
+          <h2>Record the time</h2>
+          <p class="small muted" style="margin-top:0">Look at the clock. Type the time <b>rounded to 1 decimal place</b> (like 1.4).</p>
+          <div class="row">
+            <input class="num" id="reading" inputmode="decimal" disabled aria-label="Time to fall, seconds">
+            <span>s</span>
+            <button class="btn btn-green" id="record-btn" onclick="record()" disabled>Record my time</button>
+          </div>
+          <p class="msg" id="read-msg" aria-live="polite"></p>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-grey small" onclick="undo()">↶ Undo my last time</button>
+          <button class="btn btn-grey small" onclick="resetAll()">Start again (deletes all data)</button>
+        </div>
+        <p class="small muted" style="margin:10px 0 0">Mistakes repeated so far: <b id="mistake-n">0</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS TABLE -->
+  <section id="table" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Results table</h2>
+        <div class="seg" role="group" aria-label="Which results to show">
+          <button id="v-hand-t" onclick="setView('hand')">⏱ Timed by hand</button>
+          <button id="v-sensor-t" onclick="setView('sensor')">📡 Timed by sensor</button>
+        </div>
+      </div>
+      <p class="small muted">Each drop goes in the row for its area. Do <b>at least 3 drops</b> for each area.
+        Then work out the <b>mean</b> for each row and type it in, <b>rounded to 1 decimal place</b> (like 1.4).</p>
+      <div style="overflow-x:auto"><table class="sci" id="results"></table></div>
+      <p id="empty" class="muted" style="text-align:center"></p>
+      <div class="row" style="justify-content:center; margin-top:12px">
+        <button class="btn btn-green" onclick="checkMeans()">✔ Check my means</button>
+      </div>
+      <ul class="fb" id="mean-fb" style="max-width:560px; margin-left:auto; margin-right:auto"></ul>
+      <div class="compare" id="compare"></div>
+    </div>
+  </section>
+
+  <!-- BAR GRAPH -->
+  <section id="graph" class="tab">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Build your bar graph</h2>
+        <div class="seg" role="group" aria-label="Which results to graph">
+          <button id="v-hand-g" onclick="setView('hand')">⏱ Timed by hand</button>
+          <button id="v-sensor-g" onclick="setView('sensor')">📡 Timed by sensor</button>
+        </div>
+      </div>
+      <p class="small muted">Make <b>one bar for each area</b>. The height of the bar is your <b>mean</b> from the table.
+        Click or drag above an area to set its bar. Then press <b>Check my bars</b>.</p>
+      <canvas id="plot" aria-label="Empty bar graph: area of the canopy against mean time to fall"></canvas>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-green" onclick="checkBars()">✔ Check my bars</button>
+        <button class="btn btn-grey" onclick="clearBars()">Clear my bars</button>
+        <button class="btn btn-grey" id="show-btn" onclick="toggleAnswer()" disabled>🔒 Show the computer's graph</button>
+      </div>
+      <ul class="fb" id="bar-fb"></ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// =====================================================================
+// The model
+// =====================================================================
+// Time for the load to fall 2 m, by canopy area. These are the mock's own
+// means (0.9, 1.2, 1.5, 1.7, 1.8 s to 1 d.p.), so the class's data looks like
+// the data in the Quanta mock. The rises shrink (0.3, 0.3, 0.2, 0.1 s), as they
+// do for a real parachute: its falling speed goes as 1 / sqrt(area).
+const FALL_TIME = { 100: 0.93, 200: 1.23, 300: 1.47, 400: 1.67, 500: 1.83 };
+// Each real fall varies a little (how the canopy opens, the air): +/-1.5 %.
+// A sensor shows only this; timing by hand adds the student's reactions on top.
+// Kept small on purpose: at 3 % the sensor's repeats spread by 0.1 s as often as
+// a careful student's hand times did (tested 2026-10-09), and the comparison
+// lost its point.
+const SPREAD = 0.015;
+// A press this far off is a MISTAKE, not a limitation: the drop is not recorded.
+const LATE_START = 0.6;   // s after the release
+const LATE_STOP = 1.0;    // s after the landing
+const GIVE_UP = 2.0;      // s after the landing with no press at all
+// Checks: a typed time must be the stopwatch rounded to 1 d.p.; a mean within
+// 0.05 of the true mean (so either rounding of a .x5 passes); a bar within 0.1 s.
+const MEAN_TOL = 0.05, BAR_TOL = 0.1;
+
+const METHODS = ['hand', 'sensor'];
+const NAME = { hand: 'by hand', sensor: 'by sensor' };
+let area = 300;
+let method = 'hand';     // how the next drop is timed
+let view = 'hand';       // which results the table and graph show
+let dropCount = 0, mistakes = 0;
+let drop = null;         // the drop in progress (see startDrop)
+let pending = null;      // {m, k, shown} once a time is on the stopwatch and not yet recorded
+const blank = () => ({ hand: {}, sensor: {} });
+let data = blank();      // data.hand["300"] = [1.5, 1.6, 1.4]
+let history = [];        // [{m, k}] in the order recorded, for undo
+let means = blank(), meanState = blank(), bars = blank(), barState = blank();
+let answerOpen = false, graphDone = false;
+const $ = id => document.getElementById(id);
+const now = () => performance.now() / 1000;
+
+// =====================================================================
+// Tabs and the two switches
+// =====================================================================
+function tab(id) {
+  for (const t of ['drop', 'table', 'graph']) {
+    $(t).classList.toggle('on', t === id);
+    $('t-' + t).classList.toggle('on', t === id);
+  }
+  if (id === 'drop') sizeScene();
+  if (id === 'graph') sizePlot();
+  if (id === 'table') { renderTable(); renderCompare(); }
+}
+
+function setMethod(m) {
+  if (drop || pending) return;
+  method = m;
+  $('m-hand').classList.toggle('on', m === 'hand');
+  $('m-sensor').classList.toggle('on', m === 'sensor');
+  $('method-help').innerHTML = m === 'hand'
+    ? 'Your partner lets go when they are ready. Press <b>START</b> the moment it drops and <b>STOP</b> the moment the load touches the floor.'
+    : 'A light beam at the 2 m mark starts the clock, and a pad on the floor stops it. You just watch.';
+  $('ss-btn').style.display = m === 'hand' ? '' : 'none';
+  $('key-tip').style.display = m === 'hand' ? '' : 'none';
+  $('watch-lab').textContent = m === 'hand' ? 'Stopwatch' : 'Timing sensor';
+  $('face').classList.toggle('sensor', m === 'sensor');
+  setView(m);
+  drawScene();
+}
+
+function setView(m) {
+  view = m;
+  for (const s of ['t', 'g']) {
+    $('v-hand-' + s).classList.toggle('on', m === 'hand');
+    $('v-sensor-' + s).classList.toggle('on', m === 'sensor');
+  }
+  answerOpen = false; graphDone = false;
+  $('mean-fb').innerHTML = ''; $('bar-fb').innerHTML = '';
+  renderTable(); renderCompare(); updateShow(); drawPlot();
+}
+
+// =====================================================================
+// The scene: a wall with a scale, the 2 m tape mark, the parachute
+// =====================================================================
+const SW = 360, SH = 560, FLOOR = 520, TOP_M = 2.5, PX_PER_M = (FLOOR - 40) / TOP_M;  // 192 px per metre
+const SCALE_X = 64, CHUTE_X = 225, STRING_PX = 50;
+const yOf = m => FLOOR - m * PX_PER_M;
+const scene = $('scene'), sc = scene.getContext('2d');
+let sceneK = 1;
+
+function sizeScene() {
+  const w = scene.parentElement.clientWidth - 32;
+  if (w <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = Math.min(w, 400);
+  scene.style.width = cssW + 'px'; scene.style.height = cssW * SH / SW + 'px';
+  scene.style.margin = '0 auto';
+  scene.width = Math.round(cssW * dpr); scene.height = Math.round(cssW * SH / SW * dpr);
+  sceneK = cssW / SW * dpr;
+  drawScene();
+}
+
+// The load's height above the floor during a fall: a quick speed-up, then a
+// steady fall, landing exactly at time T.
+function fallHeight(t, T) {
+  const u = Math.max(0, Math.min(1, t / T)), k = 0.15;
+  const f = u => u - k * (1 - Math.exp(-u / k));
+  return 2 * (1 - f(u) / f(1));
+}
+
+function drawParachute(loadM, a, held) {
+  const yl = yOf(loadM);                      // bottom of the load
+  const side = 40 + (Math.sqrt(a) - 10) * 5;  // canopy width grows with the square root of area
+  const top = yl - 12 - STRING_PX - 18;
+  // canopy: a paper dome
+  sc.fillStyle = '#f472b6'; sc.strokeStyle = '#9d174d'; sc.lineWidth = 1.5;
+  sc.beginPath();
+  sc.moveTo(CHUTE_X - side / 2, top + 18);
+  sc.quadraticCurveTo(CHUTE_X, top - 10, CHUTE_X + side / 2, top + 18);
+  sc.lineTo(CHUTE_X - side / 2, top + 18); sc.fill(); sc.stroke();
+  // strings
+  sc.strokeStyle = '#64748b'; sc.lineWidth = 1;
+  for (const dx of [-side / 2, -side / 6, side / 6, side / 2]) {
+    sc.beginPath(); sc.moveTo(CHUTE_X + dx, top + 18); sc.lineTo(CHUTE_X, yl - 12); sc.stroke();
+  }
+  // the 10 g load
+  sc.fillStyle = '#475569'; sc.fillRect(CHUTE_X - 7, yl - 12, 14, 12);
+  // the partner's hand, holding the top of the canopy until the release
+  if (held) {
+    sc.fillStyle = '#fcd9b6'; sc.strokeStyle = '#b45309'; sc.lineWidth = 1.2;
+    sc.beginPath(); sc.ellipse(CHUTE_X, top - 4, 16, 11, 0, 0, Math.PI * 2); sc.fill(); sc.stroke();
+    sc.fillRect(CHUTE_X + 8, top - 30, 10, 26); sc.strokeRect(CHUTE_X + 8, top - 30, 10, 26);
+  }
+}
+
+function drawScene() {
+  sc.setTransform(sceneK, 0, 0, sceneK, 0, 0);
+  // wall and floor
+  sc.fillStyle = '#f8fafc'; sc.fillRect(0, 0, SW, FLOOR);
+  sc.fillStyle = '#e2e8f0'; sc.fillRect(0, 0, 30, FLOOR);
+  sc.fillStyle = '#a16207'; sc.fillRect(0, FLOOR, SW, SH - FLOOR);
+  sc.fillStyle = '#ca8a04'; for (let x = 0; x < SW; x += 48) sc.fillRect(x, FLOOR, 2, SH - FLOOR);
+  // height scale: a line every 10 cm, labelled every 50 cm
+  sc.fillStyle = '#fff'; sc.fillRect(SCALE_X - 4, yOf(TOP_M) - 6, 16, FLOOR - yOf(TOP_M) + 6);
+  sc.strokeStyle = '#1e293b'; sc.lineWidth = 2;
+  sc.beginPath(); sc.moveTo(SCALE_X, FLOOR); sc.lineTo(SCALE_X, yOf(TOP_M)); sc.stroke();
+  sc.font = '600 12px system-ui, sans-serif'; sc.textAlign = 'right'; sc.textBaseline = 'middle'; sc.fillStyle = '#1e293b';
+  for (let i = 0; i <= TOP_M * 10; i++) {
+    const half = i % 5 === 0;
+    sc.lineWidth = half ? 2 : 1;
+    sc.beginPath(); sc.moveTo(SCALE_X, yOf(i / 10)); sc.lineTo(SCALE_X + (half ? 12 : 6), yOf(i / 10)); sc.stroke();
+    if (half) sc.fillText((i / 10).toFixed(1), SCALE_X - 8, yOf(i / 10));
+  }
+  sc.save(); sc.translate(12, yOf(TOP_M / 2)); sc.rotate(-Math.PI / 2); sc.textAlign = 'center';
+  sc.fillText('Height (m)', 0, 0); sc.restore();
+  // the tape at 2 m
+  sc.fillStyle = 'rgba(234, 179, 8, 0.85)'; sc.fillRect(SCALE_X + 14, yOf(2) - 4, SW - SCALE_X - 24, 8);
+  sc.fillStyle = '#854d0e'; sc.font = '700 11px system-ui, sans-serif'; sc.textAlign = 'left';
+  sc.fillText('tape: 2 m', SCALE_X + 18, yOf(2) - 12);
+  // the timing sensor, when it is in use: a light beam at 2 m and a pad on the floor
+  if (method === 'sensor') {
+    sc.fillStyle = '#334155'; sc.fillRect(SW - 22, yOf(2) - 10, 12, 20);
+    sc.strokeStyle = 'rgba(239, 68, 68, 0.7)'; sc.lineWidth = 1.5; sc.setLineDash([4, 3]);
+    sc.beginPath(); sc.moveTo(SCALE_X + 14, yOf(2)); sc.lineTo(SW - 22, yOf(2)); sc.stroke(); sc.setLineDash([]);
+    sc.fillStyle = '#334155'; sc.fillRect(CHUTE_X - 34, FLOOR - 5, 68, 5);
+    sc.fillStyle = '#fff'; sc.font = '700 9px system-ui, sans-serif'; sc.textAlign = 'center';
+    sc.fillText('PAD', CHUTE_X, FLOOR - 2);
+  }
+  // the parachute
+  if (drop && drop.phase !== 'ready') {
+    const t = now() - drop.releaseAt;
+    drawParachute(Math.max(0, fallHeight(t, drop.T)), drop.a, false);
+  } else if (drop) {
+    drawParachute(2, drop.a, true);
+  } else if (pending) {
+    drawParachute(0, pending.a, false);
+  } else {
+    drawParachute(2, area, true);
+  }
+}
+
+// =====================================================================
+// Dropping and timing
+// =====================================================================
+// A drop: {a, T, phase, releaseAt, landAt, start, stop}. phase: 'ready' (held,
+// "ready, steady"), 'falling', 'landed'. Times are in seconds of real time.
+function startDrop() {
+  if (drop || pending) return;
+  dropCount++;
+  const T = FALL_TIME[area] * (1 + (Math.random() * 2 - 1) * SPREAD);
+  // The partner lets go 1 to 2.5 s after "steady", so it cannot be predicted.
+  const releaseAt = now() + 1.0 + Math.random() * 1.5;
+  drop = { a: area, T, phase: 'ready', releaseAt, landAt: releaseAt + T, start: null, stop: null };
+  $('drop-btn').disabled = true; $('area').disabled = true;
+  setMethodButtons(true);
+  $('ss-btn').disabled = method !== 'hand';
+  $('ss-btn').textContent = 'START'; $('ss-btn').classList.remove('stop');
+  $('face').textContent = '0.00 s';
+  say('', '');
+  callout('Ready… steady…');
+  requestAnimationFrame(tick);
+}
+
+function tick() {
+  if (!drop) return;
+  const t = now();
+  if (drop.phase === 'ready' && t >= drop.releaseAt) { drop.phase = 'falling'; callout('Dropped!'); }
+  if (drop.phase === 'falling' && t >= drop.landAt) { drop.phase = 'landed'; callout('Landed!'); }
+  // the clock face
+  if (method === 'hand' && drop.start !== null && drop.stop === null) show(t - drop.start);
+  if (method === 'sensor' && drop.phase !== 'ready') show(Math.min(t, drop.landAt) - drop.releaseAt);
+  if (method === 'sensor' && drop.phase === 'landed') { finish(drop.T); return; }
+  // by hand: nobody pressed in time
+  if (method === 'hand' && drop.phase === 'landed' && t - drop.landAt > GIVE_UP) {
+    mistake(drop.start === null ? 'you did not start the stopwatch.' : 'you did not stop the stopwatch when it landed.');
+    return;
+  }
+  drawScene();
+  requestAnimationFrame(tick);
+}
+
+function pressWatch() {
+  if (!drop || method !== 'hand') return;
+  const t = now();
+  if (drop.start === null) {
+    if (drop.phase === 'ready') { mistake('you started the stopwatch before it was dropped.'); return; }
+    if (t - drop.releaseAt > LATE_START) { mistake('you started the stopwatch much too late.'); return; }
+    drop.start = t;
+    $('ss-btn').textContent = 'STOP'; $('ss-btn').classList.add('stop');
+    return;
+  }
+  if (drop.stop === null) {
+    if (t < drop.landAt) { mistake('you stopped the stopwatch before the load landed.'); return; }
+    if (t - drop.landAt > LATE_STOP) { mistake('you stopped the stopwatch much too late.'); return; }
+    drop.stop = t;
+    finish(drop.stop - drop.start);
+  }
+}
+
+// The time on the clock, to 2 decimal places, waits for the student to record it.
+function finish(seconds) {
+  const shown = Math.round(seconds * 100) / 100;
+  show(shown);
+  pending = { m: method, k: String(drop.a), a: drop.a, shown };
+  drop = null;
+  $('ss-btn').disabled = true; $('ss-btn').textContent = 'START'; $('ss-btn').classList.remove('stop');
+  callout(method === 'hand' ? 'Stopped!' : 'Landed! The sensor has the time.');
+  $('reading').disabled = false; $('record-btn').disabled = false; $('reading').focus();
+  drawScene();
+}
+
+function mistake(why) {
+  mistakes++;
+  $('mistake-n').textContent = mistakes;
+  drop = null; dropCount--;
+  $('ss-btn').disabled = true; $('ss-btn').textContent = 'START'; $('ss-btn').classList.remove('stop');
+  $('drop-btn').disabled = false; $('area').disabled = false; setMethodButtons(false);
+  $('face').textContent = '–.–– s';
+  callout('');
+  say(`⚠ Mistake: ${why} This drop does not count. A scientist repeats it — drop it again.`, 'warn');
+  drawScene();
+}
+
+function show(s) { $('face').textContent = s.toFixed(2) + ' s'; }
+function callout(text) { $('callout').textContent = text; }
+function say(text, cls) { const m = $('read-msg'); m.textContent = text; m.className = 'msg ' + cls; }
+function setMethodButtons(off) { $('m-hand').disabled = off; $('m-sensor').disabled = off; }
+
+function record() {
+  if (!pending) return;
+  const raw = $('reading').value.trim().replace(',', '.');
+  const x = Number(raw);
+  if (raw === '' || !isFinite(x)) { say('Type the time on the clock, in seconds.', 'info'); return; }
+  const target = Math.round(pending.shown * 10) / 10;
+  const dp = raw.includes('.') ? raw.split('.')[1].length : 0;
+  if (Math.abs(x - target) < 1e-9 && dp === 1) {
+    const { m, k } = pending;
+    (data[m][k] = data[m][k] || []).push(x);
+    history.push({ m, k });
+    delete meanState[m][k]; delete barState[m][k]; graphDone = false; updateShow();
+    pending = null;
+    $('reading').value = ''; $('reading').disabled = true; $('record-btn').disabled = true;
+    $('drop-btn').disabled = false; $('area').disabled = false; setMethodButtons(false);
+    $('drop-n').textContent = dropCount + 1;
+    callout('');
+    say(`Recorded (${NAME[m]}): ${k} cm² → ${x.toFixed(1)} s (drop ${data[m][k].length} for this area).`, 'ok');
+    drawScene();
+  } else if (Math.abs(x - pending.shown) < 0.05 + 1e-9) {
+    say('Nearly: now round it to 1 decimal place (like 1.4).', 'warn');
+  } else {
+    say('Look at the clock again, then round to 1 decimal place.', 'bad');
+  }
+}
+$('reading').addEventListener('keydown', e => { if (e.key === 'Enter') record(); });
+
+function undo() {
+  if (pending || drop) { say('Finish this drop first.', 'info'); return; }
+  const last = history.pop();
+  if (!last) { say('Nothing to undo.', 'info'); return; }
+  const v = data[last.m][last.k].pop();
+  if (!data[last.m][last.k].length) delete data[last.m][last.k];
+  delete meanState[last.m][last.k]; delete barState[last.m][last.k]; graphDone = false; updateShow();
+  dropCount--; $('drop-n').textContent = dropCount + 1;
+  say(`Removed your last time (${NAME[last.m]}: ${last.k} cm² → ${v.toFixed(1)} s).`, 'info');
+}
+
+function resetAll() {
+  const any = METHODS.some(m => Object.keys(data[m]).length);
+  if (any && !confirm('Delete ALL your times and start again?')) return;
+  data = blank(); history = []; means = blank(); meanState = blank(); bars = blank(); barState = blank();
+  graphDone = false; answerOpen = false; dropCount = 0; mistakes = 0; drop = null; pending = null;
+  $('drop-n').textContent = 1; $('mistake-n').textContent = 0; $('face').textContent = '0.00 s';
+  $('reading').value = ''; $('reading').disabled = true; $('record-btn').disabled = true;
+  $('drop-btn').disabled = false; $('area').disabled = false; $('ss-btn').disabled = true; setMethodButtons(false);
+  callout(''); say('', ''); updateShow(); drawScene();
+}
+
+$('area').addEventListener('input', e => {
+  area = Number(e.target.value);
+  $('area-out').textContent = area;
+  if (!drop && !pending) drawScene();
+});
+// The space bar is the stopwatch button, while a hand-timed drop is under way.
+document.addEventListener('keydown', e => {
+  if (e.code !== 'Space' || !drop || method !== 'hand') return;
+  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  e.preventDefault(); pressWatch();
+});
+
+// =====================================================================
+// Results table, with typed means, and the spread compared
+// =====================================================================
+const keys = m => Object.keys(data[m]).map(Number).sort((a, b) => a - b).map(String);
+const trueMean = (m, k) => data[m][k].reduce((a, b) => a + b, 0) / data[m][k].length;
+
+function renderTable() {
+  const t = $('results'), ks = keys(view);
+  $('empty').style.display = ks.length ? 'none' : 'block';
+  $('empty').innerHTML = `No times ${NAME[view]} yet. Go to <b>1. Drop</b>` + (view === 'sensor' ? ' and switch to the <b>timing sensor</b>.' : '.');
+  if (!ks.length) { t.innerHTML = ''; return; }
+  const n = Math.max(3, ...ks.map(k => data[view][k].length));
+  let h = `<caption class="small muted" style="padding-bottom:6px">Time for a paper parachute to fall 2 m with different canopy areas (timed ${NAME[view]})</caption>`;
+  h += `<thead><tr><th rowspan="2">Area of the<br>canopy (cm²)</th><th colspan="${n + 1}">Time to fall 2 m (s)</th></tr><tr>`;
+  for (let i = 1; i <= n; i++) h += `<th>Drop ${i}</th>`;
+  h += '<th>Mean</th></tr></thead><tbody>';
+  for (const k of ks) {
+    h += `<tr><td><b>${k}</b></td>`;
+    for (let i = 0; i < n; i++) h += `<td>${data[view][k][i] === undefined ? '' : data[view][k][i].toFixed(1)}</td>`;
+    const st = meanState[view][k], mark = st === 'ok' ? ' ✓' : st === 'dp' ? ' !' : st === 'bad' ? ' ✗' : '';
+    h += `<td class="mean ${st ? 'm-' + st : ''}"><input class="mean-in" data-k="${k}" inputmode="decimal" aria-label="Mean for ${k} square centimetres" value="${(means[view][k] || '').replace(/"/g, '&quot;')}"><b>${mark}</b></td></tr>`;
+  }
+  t.innerHTML = h + '</tbody>';
+  t.querySelectorAll('.mean-in').forEach(inp => inp.addEventListener('input', () => {
+    means[view][inp.dataset.k] = inp.value; delete meanState[view][inp.dataset.k];
+    inp.parentElement.className = 'mean'; inp.nextElementSibling.textContent = '';
+  }));
+}
+
+function checkMeans() {
+  const ks = keys(view), fb = $('mean-fb'), items = [];
+  if (!ks.length) { fb.innerHTML = '<li class="info">ℹ Record some times first.</li>'; return; }
+  let all = true;
+  for (const k of ks) {
+    const raw = (means[view][k] || '').trim().replace(',', '.');
+    delete meanState[view][k];
+    if (raw === '') { items.push(['muted', `• ${k} cm²: no mean typed yet.`]); all = false; continue; }
+    const x = Number(raw);
+    if (!isFinite(x)) { meanState[view][k] = 'bad'; all = false; items.push(['bad', `✗ ${k} cm²: "${raw}" is not a number.`]); continue; }
+    if (Math.abs(x - trueMean(view, k)) <= MEAN_TOL + 1e-9) {
+      const dp = raw.includes('.') ? raw.split('.')[1].length : 0;
+      if (dp === 1) { meanState[view][k] = 'ok'; items.push(['ok', `✓ ${k} cm²: correct.`]); }
+      else { meanState[view][k] = 'dp'; all = false; items.push(['warn', `! ${k} cm²: right value — now round it to 1 decimal place (like 1.4).`]); }
+    } else {
+      meanState[view][k] = 'bad'; all = false;
+      items.push(['bad', `✗ ${k} cm²: not right. Add up the drops in this row, then divide by how many drops there are.`]);
+    }
+  }
+  if (ks.some(k => data[view][k].length < 3)) items.push(['info', 'ℹ Some rows have fewer than 3 drops. Do more drops to make your results more reliable.']);
+  if (all) items.unshift(['ok', '★ All your means are correct! Now build your bar graph.']);
+  renderTable();
+  fb.innerHTML = items.map(([c, t]) => `<li class="${c}">${t}</li>`).join('');
+}
+
+// How far apart the repeats are, for each area timed both ways with 3 or more drops.
+function renderCompare() {
+  const box = $('compare');
+  const spread = (m, k) => Math.max(...data[m][k]) - Math.min(...data[m][k]);
+  const both = keys('hand').filter(k => data.hand[k].length >= 3 && data.sensor[k] && data.sensor[k].length >= 3);
+  if (!both.length) {
+    box.innerHTML = '<b>By hand or by sensor?</b><p class="small muted" style="margin:6px 0 0">Time at least 3 drops of the same area <b>by hand</b> and 3 more with the <b>timing sensor</b>. Then this box compares how far apart your repeats are.</p>';
+    return;
+  }
+  let h = '<b>How far apart are the repeats?</b><p class="small muted" style="margin:4px 0 0">Spread = the biggest time − the smallest time for that area.</p>';
+  h += '<table><thead><tr><th>Area (cm²)</th><th>Spread by hand (s)</th><th>Spread by sensor (s)</th></tr></thead><tbody>';
+  for (const k of both) h += `<tr><td><b>${k}</b></td><td>${spread('hand', k).toFixed(1)}</td><td>${spread('sensor', k).toFixed(1)}</td></tr>`;
+  box.innerHTML = h + '</tbody></table><p class="small muted" style="margin:8px 0 0">Which way of timing gives repeats that agree better? Why?</p>';
+}
+
+// =====================================================================
+// Bar graph: the student places each bar; the app checks it
+// =====================================================================
+const PW = 640, PH = 420, PM = { l: 64, r: 16, t: 16, b: 64 }, YMAX = 2.5;
+const plot = $('plot'), pc = plot.getContext('2d');
+let plotK = 1, plotCss = 1;
+const py = v => PH - PM.b - v / YMAX * (PH - PM.t - PM.b);
+const fromPy = Y => (PH - PM.b - Y) / (PH - PM.t - PM.b) * YMAX;
+
+function slots() {
+  const ks = keys(view), n = Math.max(ks.length, 1), w = (PW - PM.l - PM.r) / n;
+  return ks.map((k, i) => ({ k, x0: PM.l + i * w, w, cx: PM.l + (i + .5) * w }));
+}
+
+function sizePlot() {
+  const w = plot.parentElement.clientWidth - 32;
+  if (w <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  plot.style.width = w + 'px'; plot.style.height = w * PH / PW + 'px';
+  plot.width = Math.round(w * dpr); plot.height = Math.round(w * PH / PW * dpr);
+  plotK = w / PW * dpr; plotCss = w / PW;
+  drawPlot();
+}
+
+function drawPlot() {
+  pc.setTransform(plotK, 0, 0, plotK, 0, 0);
+  pc.clearRect(0, 0, PW, PH);
+  for (let i = 0; i <= YMAX * 10; i++) {
+    const half = i % 5 === 0;
+    pc.strokeStyle = half ? '#94a3b8' : '#e2e8f0'; pc.lineWidth = half ? 1 : .7;
+    pc.beginPath(); pc.moveTo(PM.l, py(i / 10)); pc.lineTo(PW - PM.r, py(i / 10)); pc.stroke();
+  }
+  pc.strokeStyle = '#1e293b'; pc.lineWidth = 2;
+  pc.beginPath(); pc.moveTo(PM.l, PM.t); pc.lineTo(PM.l, py(0)); pc.lineTo(PW - PM.r, py(0)); pc.stroke();
+  pc.fillStyle = '#334155'; pc.font = '500 13px system-ui, sans-serif'; pc.textAlign = 'right'; pc.textBaseline = 'middle';
+  for (let i = 0; i <= YMAX * 10; i += 5) pc.fillText((i / 10).toFixed(1), PM.l - 8, py(i / 10));
+  pc.font = '700 14px system-ui, sans-serif'; pc.textAlign = 'center'; pc.textBaseline = 'alphabetic';
+  pc.fillText('Area of the canopy (cm²)', (PM.l + PW - PM.r) / 2, PH - 12);
+  pc.save(); pc.translate(18, py(YMAX / 2)); pc.rotate(-Math.PI / 2); pc.fillText('Mean time to fall 2 m (s)', 0, 0); pc.restore();
+  const ss = slots();
+  if (!ss.length) {
+    pc.fillStyle = '#94a3b8'; pc.font = 'italic 14px system-ui, sans-serif';
+    pc.fillText(`Record some times ${NAME[view]} first — your areas will appear here.`, (PM.l + PW) / 2, py(YMAX / 2));
+  }
+  for (const s of ss) {
+    pc.fillStyle = '#334155'; pc.font = '600 13px system-ui, sans-serif'; pc.textBaseline = 'top';
+    pc.fillText(s.k, s.cx, py(0) + 6);
+    const bw = Math.min(s.w * .6, 70);
+    if (answerOpen) {
+      pc.fillStyle = 'rgba(15, 23, 42, 0.12)'; pc.strokeStyle = '#0f172a'; pc.lineWidth = 1.5; pc.setLineDash([5, 4]);
+      const m = trueMean(view, s.k);
+      pc.fillRect(s.cx - bw / 2 - 6, py(m), bw + 12, py(0) - py(m)); pc.strokeRect(s.cx - bw / 2 - 6, py(m), bw + 12, py(0) - py(m));
+      pc.setLineDash([]);
+    }
+    const b = bars[view][s.k];
+    if (b !== undefined) {
+      const st = barState[view][s.k];
+      pc.fillStyle = st === 'ok' ? '#22c55e' : st ? '#f87171' : '#a78bfa';
+      pc.fillRect(s.cx - bw / 2, py(b), bw, py(0) - py(b));
+      pc.strokeStyle = '#4c1d95'; pc.lineWidth = 1; pc.strokeRect(s.cx - bw / 2, py(b), bw, py(0) - py(b));
+    }
+  }
+}
+
+let dragging = false;
+function placeBar(e) {
+  const r = plot.getBoundingClientRect();
+  const X = (e.clientX - r.left) / plotCss, Y = (e.clientY - r.top) / plotCss;
+  const s = slots().find(s => X >= s.x0 && X < s.x0 + s.w);
+  if (!s) return;
+  bars[view][s.k] = Math.max(0, Math.min(YMAX, Math.round(fromPy(Y) * 20) / 20));
+  delete barState[view][s.k]; graphDone = false; updateShow();
+  drawPlot();
+}
+plot.addEventListener('pointerdown', e => { dragging = true; plot.setPointerCapture(e.pointerId); placeBar(e); });
+plot.addEventListener('pointermove', e => { if (dragging) placeBar(e); });
+plot.addEventListener('pointerup', () => { dragging = false; });
+
+function checkBars() {
+  const ss = slots(), fb = $('bar-fb'), items = [];
+  if (!ss.length) { fb.innerHTML = '<li class="info">ℹ Record some times first.</li>'; return; }
+  let all = true;
+  for (const { k } of ss) {
+    if (bars[view][k] === undefined) { items.push(['muted', `• ${k} cm²: no bar yet.`]); all = false; continue; }
+    const d = bars[view][k] - trueMean(view, k);
+    if (Math.abs(d) <= BAR_TOL + 1e-9) { barState[view][k] = 'ok'; items.push(['ok', `✓ ${k} cm²: correct.`]); }
+    else { barState[view][k] = d > 0 ? 'high' : 'low'; all = false; items.push(['bad', `✗ ${k} cm²: a little too ${d > 0 ? 'high' : 'low'}. Check your mean, then the height of the bar.`]); }
+  }
+  graphDone = all;
+  if (all) items.unshift(['ok', '★ All your bars are correct! You can now compare with the computer\'s graph.']);
+  updateShow(); drawPlot();
+  fb.innerHTML = items.map(([c, t]) => `<li class="${c}">${t}</li>`).join('');
+}
+
+function clearBars() { bars[view] = {}; barState[view] = {}; graphDone = false; answerOpen = false; updateShow(); drawPlot(); $('bar-fb').innerHTML = ''; }
+
+function updateShow() {
+  if (!graphDone) answerOpen = false;
+  const b = $('show-btn');
+  b.disabled = !graphDone;
+  b.textContent = !graphDone ? '🔒 Show the computer\'s graph' : answerOpen ? 'Hide the computer\'s graph' : '🔓 Show the computer\'s graph';
+}
+function toggleAnswer() { if (!graphDone) return; answerOpen = !answerOpen; updateShow(); drawPlot(); }
+
+// =====================================================================
+// Start
+// =====================================================================
+window.addEventListener('resize', () => { sizeScene(); sizePlot(); });
+setMethod('hand');
+tab('drop');
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ simulation, served at `…/science-simulations/<folder>/`.
 | Folder | Simulation |
 |---|---|
 | `bottle-rocket/` | Bottle Rocket Lab |
+| `paper-parachute/` | Paper Parachute Lab |
 | `conductivity/` | Saltwater Conductivity Lab |
 | `yeast/` | Yeast Respiration |
 | `rutherford/` | Rutherford's Gold Foil Experiment |
