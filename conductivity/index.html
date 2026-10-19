@@ -163,14 +163,20 @@
                                 <div id="guide-progress" class="mt-2 space-y-1 text-xs text-slate-600"></div>
                             </div>
 
-                            <!-- State info -->
-                            <div class="flex justify-between items-center mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                <span class="text-slate-600 font-medium">Salt in each beaker:</span>
-                                <span class="text-2xl font-bold text-blue-700"><span id="salt-mass-display">0.00</span> <span class="text-sm text-blue-500">g</span></span>
+                            <!-- Step 1: the student chooses the amount of salt -->
+                            <div id="amount-box" class="mb-3 bg-blue-50 p-3 rounded-lg border-2 border-blue-200">
+                                <label for="amount-input" class="block text-slate-700 font-semibold mb-2"><span class="inline-flex w-6 h-6 rounded-full bg-blue-600 text-white text-sm items-center justify-center mr-1">1</span> Salt in each beaker:</label>
+                                <div class="flex items-center gap-2">
+                                    <button id="amount-minus" type="button" onclick="nudgeAmount(-1)" aria-label="0.50 g less salt" class="w-12 h-12 rounded-lg bg-white border-2 border-blue-300 text-blue-700 text-2xl font-bold hover:bg-blue-100">−</button>
+                                    <input id="amount-input" type="text" inputmode="decimal" autocomplete="off" value="0.00"
+                                           class="flex-1 min-w-0 h-12 text-center text-2xl font-bold text-blue-700 border-2 border-blue-300 rounded-lg bg-white focus:border-blue-600 outline-none">
+                                    <span class="text-lg font-bold text-blue-500">g</span>
+                                    <button id="amount-plus" type="button" onclick="nudgeAmount(1)" aria-label="0.50 g more salt" class="w-12 h-12 rounded-lg bg-white border-2 border-blue-300 text-blue-700 text-2xl font-bold hover:bg-blue-100">+</button>
+                                </div>
+                                <p id="amount-msg" class="text-xs mt-2 text-slate-500"></p>
                             </div>
                             <div class="flex justify-between items-center mb-4 text-sm text-slate-500 px-1">
                                 <span>Trial (beaker): <span id="trial-display" class="font-bold text-slate-700">—</span></span>
-                                <span>Steps of 0.50 g, up to 10.00 g</span>
                             </div>
 
                             <button id="btn-prepare" onclick="prepareBeakers()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
@@ -178,7 +184,7 @@
                             </button>
 
                             <button id="btn-record" onclick="recordDataPoint()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md mb-3 flex items-center justify-center">
-                                <i class="fa-solid fa-clipboard-check mr-2"></i> Record Voltage
+                                <span class="inline-flex w-6 h-6 rounded-full bg-white text-emerald-600 text-sm items-center justify-center mr-2">3</span> Record Voltage
                             </button>
 
                             <button id="btn-reset" onclick="resetLab()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl flex items-center justify-center">
@@ -341,9 +347,14 @@
         // This replaced, the same day, one beaker per trial with salt added to it
         // amount after amount: students lost their place, and its trials were not
         // independent samples.
+        // The student chooses each amount (Cesar, 2026-10-19): with the amounts
+        // fixed in 0.50 g steps there was nowhere to enter the salt, and a full run
+        // was 21 amounts. The − / + buttons still step by 0.50 g, any amount from
+        // 0.00 g to 10.00 g can be typed, and the next untested step is suggested.
         const STEP = 0.5, TRIALS = 3;
-        let phase = 'bench';   // 'bench' | 'preparing' | 'measure' | 'swap' | 'rowdone' | 'finished'
+        let phase = 'bench';   // 'bench' | 'preparing' | 'measure' | 'swap' | 'rowdone'
         let amount = 0;        // the amount of salt being worked on, g
+        let amountValid = true; // false while the typed amount is not a usable number
         let swap = null;       // {t0, next, loaded} while one beaker slides out and the next in
         let slideX = 0;        // the beaker's horizontal offset during a swap
         let benchGrains = [];  // salt falling into the three bench beakers
@@ -352,7 +363,19 @@
         function updateUI() {
             document.getElementById('meter-current').innerText = fmtCurrent(current);
             document.getElementById('meter-voltage').innerText = fmtVolt(voltage);
-            document.getElementById('salt-mass-display').innerText = fmtMass(amount);
+            const inp = document.getElementById('amount-input');
+            const choosing = phase === 'bench';
+            for (const id of ['amount-input', 'amount-minus', 'amount-plus']) document.getElementById(id).disabled = !choosing;
+            document.getElementById('amount-box').classList.toggle('opacity-60', !choosing);
+            if (!choosing || document.activeElement !== inp) inp.value = fmtMass(amount);   // never overwrite while typing
+            const m0 = fmtMass(amount), again = masses().includes(m0);
+            const amsg = document.getElementById('amount-msg');
+            amsg.className = 'text-xs mt-2 ' + (!amountValid ? 'text-red-600 font-semibold' : again && choosing ? 'text-amber-700 font-semibold' : 'text-slate-500');
+            amsg.innerText = !choosing ? `Locked at ${m0} g until all ${TRIALS} trials are recorded.`
+                : !amountValid ? 'Type a number from 0 to 10.'
+                : again ? `You already measured ${m0} g. Choose a new amount, or measure it again to replace those readings.`
+                : amount === 0 ? '0.00 g is distilled water: the control. Use − and + to change the amount, or type it.'
+                : 'Use − and + (steps of 0.50 g), or type the amount.';
             const inCircuit = phase === 'measure' || phase === 'swap';
             document.getElementById('trial-display').innerText = inCircuit ? `${trialNumber} of ${TRIALS}` : '—';
             document.getElementById('beaker-caption').innerText = inCircuit
@@ -360,12 +383,11 @@
                 : 'Three beakers, one for each trial: 250 mL of distilled water each';
 
             const prep = document.getElementById('btn-prepare');
-            prep.disabled = phase !== 'bench';
-            prep.innerHTML = phase === 'finished'
-                ? '<i class="fa-solid fa-flag-checkered mr-2"></i> All amounts up to 10.00 g are done'
-                : amount === 0
-                    ? '<i class="fa-solid fa-faucet-drip mr-2"></i> Fill the three beakers with distilled water'
-                    : `<i class="fa-solid fa-spoon mr-2"></i> Weigh ${fmtMass(amount)} g of salt into each beaker`;
+            prep.disabled = phase !== 'bench' || !amountValid;
+            const two = '<span class="inline-flex w-6 h-6 rounded-full bg-white text-blue-600 text-sm items-center justify-center mr-2">2</span>';
+            prep.innerHTML = two + (!amountValid ? 'Choose an amount of salt first'
+                : amount === 0 ? 'Fill the three beakers with distilled water'
+                : `Weigh ${fmtMass(amount)} g of salt into each beaker`);
             const rec = document.getElementById('btn-record');
             rec.disabled = phase !== 'measure';
             for (const b of [prep, rec]) b.classList.toggle('opacity-50', b.disabled), b.classList.toggle('cursor-not-allowed', b.disabled);
@@ -380,14 +402,15 @@
             const m = fmtMass(amount);
             const done = masses().filter(rowDone);
             let msg;
-            if (phase === 'bench') msg = amount === 0
-                ? 'Start with the control: press <b>Fill the three beakers with distilled water</b> (0.00 g of salt).'
-                : `Next amount: <b>${m} g</b>. Press <b>Weigh ${m} g of salt into each beaker</b>.`;
+            if (phase === 'bench') msg = !amountValid
+                ? '<b>Step 1:</b> type an amount of salt from 0 to 10 g.'
+                : !done.length && amount === 0
+                    ? '<b>Step 1:</b> start with the control, 0.00 g of salt. <b>Step 2:</b> press <b>Fill the three beakers with distilled water</b>.'
+                    : `<b>Step 1:</b> choose how much salt (now <b>${m} g</b>). <b>Step 2:</b> press the blue button to make the three beakers.`;
             else if (phase === 'preparing') msg = amount === 0 ? 'Filling the three beakers…' : `Weighing ${m} g of salt into each beaker…`;
-            else if (phase === 'measure') msg = `<b>Trial ${trialNumber} of ${TRIALS}</b> · ${m} g: press <b>Record Voltage</b>.`;
+            else if (phase === 'measure') msg = `<b>Step 3:</b> trial ${trialNumber} of ${TRIALS} · ${m} g: press <b>Record Voltage</b>.`;
             else if (phase === 'swap') msg = `Next beaker: <b>trial ${swap ? swap.next : trialNumber} of ${TRIALS}</b> · ${m} g…`;
-            else if (phase === 'rowdone') msg = `✓ <b>${m} g done</b>: 3 trials recorded. Getting the next three beakers…`;
-            else msg = 'All amounts from 0.00 g to 10.00 g are done. Go to the <b>Data Table</b>.';
+            else msg = `✓ <b>${m} g done</b>: 3 trials recorded. Now choose your next amount…`;
             now.innerHTML = msg;
 
             const lines = [];
@@ -396,21 +419,58 @@
                 lines.push(`<div>This amount (${m} g): ${dots}</div>`);
             }
             lines.push(`<div>Amounts finished: ${done.length ? done.join(', ') + ' g' : 'none yet'}</div>`);
-            if (done.length && phase === 'bench') lines.push('<div class="text-slate-400">Stop when you have enough amounts for your plan, then go to the Data Table.</div>');
+            if (done.length && phase === 'bench') lines.push(done.length < 5
+                ? `<div class="text-slate-400">Aim for at least 5 different amounts, spread from 0 g to 10 g (${5 - done.length} more to go).</div>`
+                : '<div class="text-slate-400">You have enough for a good graph. Add more amounts, or go to the <b>Data Table</b>.</div>');
             document.getElementById('guide-progress').innerHTML = lines.join('');
         }
 
         // The bench: no beaker is in the circuit, so the meters read zero.
         function enterBench() {
-            phase = amount > MAX_SALT + 1e-9 ? 'finished' : 'bench';
-            if (phase === 'finished') amount = MAX_SALT;
+            phase = 'bench';
             saltMass = 0; current = 0; voltage = 0; ions = []; bubbles = []; slideX = 0; swap = null;
             trialNumber = 1;
             updateUI();
         }
 
-        function prepareBeakers() {
+        // Typing an amount. Accepts a comma as the decimal mark; rounds to the
+        // balance's 0.01 g. Anything else leaves the last good amount in place.
+        function readAmountInput() {
             if (phase !== 'bench') return;
+            const raw = document.getElementById('amount-input').value.trim().replace(',', '.');
+            const x = Number(raw);
+            amountValid = raw !== '' && isFinite(x) && x >= 0 && x <= MAX_SALT;
+            if (amountValid) amount = Math.round(x * 100) / 100;
+            updateUI();
+        }
+
+        // − and +: to the next 0.50 g step down or up, so 3.37 g goes to 3.00 or 3.50.
+        function nudgeAmount(dir) {
+            if (phase !== 'bench') return;
+            const s = amount / STEP;
+            const next = (dir > 0 ? Math.floor(s + 1e-9) + 1 : Math.ceil(s - 1e-9) - 1) * STEP;
+            amount = Math.min(MAX_SALT, Math.max(0, next));
+            amountValid = true;
+            updateUI();
+        }
+
+        // After an amount is done, suggest the next 0.50 g step not yet measured.
+        function suggestNext() {
+            const done = new Set(masses());
+            const steps = [...Array(Math.round(MAX_SALT / STEP) + 1).keys()].map(i => i * STEP);
+            const s = steps.find(x => x > amount + 1e-9 && !done.has(fmtMass(x))) ?? steps.find(x => !done.has(fmtMass(x)));
+            if (s !== undefined) amount = s;
+        }
+
+        function prepareBeakers() {
+            if (phase !== 'bench' || !amountValid) return;
+            const m = fmtMass(amount);
+            if (masses().includes(m)) {
+                if (!confirm(`You already measured ${m} g. Measure it again? Your old readings for ${m} g will be replaced.`)) return;
+                for (const t in readings) delete readings[t][m];
+                delete studentMeans[m]; delete meanStatus[m]; delete placed[m];
+                dataChanged();
+            }
             phase = 'preparing';
             if (amount > 0 && !reduceMotion) {
                 for (const x of BENCH_X) for (let i = 0; i < 14; i++)
@@ -454,7 +514,7 @@
             phase = 'rowdone';
             ions = []; bubbles = []; current = 0; voltage = 0;
             updateUI();
-            setTimeout(() => { amount = Math.round((amount + STEP) * 100) / 100; enterBench(); }, reduceMotion ? 600 : 1800);
+            setTimeout(() => { suggestNext(); enterBench(); }, reduceMotion ? 600 : 1800);
         }
 
         function recordDataPoint() {
@@ -476,6 +536,7 @@
             studentMeans = {};
             meanStatus = {};
             amount = 0;
+            amountValid = true;
             benchGrains = [];
             enterBench();
             dataChanged();
@@ -607,8 +668,8 @@
         function drawBench() {
             const finishedRow = phase === 'rowdone';
             const salted = finishedRow || (phase === 'preparing' && amount > 0);
-            const title = phase === 'finished' ? 'All amounts are done'
-                : finishedRow ? `✓ ${fmtMass(amount)} g done: 3 trials recorded`
+            const title = finishedRow ? `✓ ${fmtMass(amount)} g done: 3 trials recorded`
+                : !amountValid ? 'Choose an amount of salt'
                 : `Next amount: ${fmtMass(amount)} g${amount === 0 ? ' (distilled water)' : ' of salt in each beaker'}`;
             label(title, SW / 2, 50, { size: 24, weight: 800, colour: finishedRow ? '#15803d' : '#1e293b' });
             label('One beaker for each trial · 250 mL of water in each', SW / 2, 84, { size: 14, weight: 500, colour: '#64748b' });
@@ -649,7 +710,7 @@
         function drawScene() {
             sctx.setTransform(sceneScale, 0, 0, sceneScale, 0, 0);
             sctx.clearRect(0, 0, SW, SH);
-            if (phase === 'bench' || phase === 'preparing' || phase === 'rowdone' || phase === 'finished') { drawBench(); return; }
+            if (phase === 'bench' || phase === 'preparing' || phase === 'rowdone') { drawBench(); return; }
 
             // Wires. Battery + -> bulb -> anode; battery - -> cathode.
             line([[152, 95], [377, 95]], '#ef4444');
@@ -1184,6 +1245,11 @@
             document.getElementById('name-input').focus();
         });
         window.addEventListener('resize', () => { resizeScene(); resizePlot(); });
+        const amountInput = document.getElementById('amount-input');
+        amountInput.addEventListener('input', readAmountInput);
+        amountInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); readAmountInput(); prepareBeakers(); } });
+        // Leaving a bad entry puts the last good amount back.
+        amountInput.addEventListener('blur', () => { amountValid = true; updateUI(); });
     </script>
 </body>
 </html>
