@@ -8,6 +8,7 @@ simulation, served at `…/science-simulations/<folder>/`.
 |---|---|
 | `bottle-rocket/` | Bottle Rocket Lab |
 | `paper-parachute/` | Paper Parachute Lab |
+| `motion-graphs/` | Motion Graph Lab (PhysTracker data: runner or rocket) |
 | `conductivity/` | Saltwater Conductivity Lab |
 | `yeast/` | Yeast Respiration |
 | `rutherford/` | Rutherford's Gold Foil Experiment |
