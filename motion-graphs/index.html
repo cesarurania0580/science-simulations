@@ -19,7 +19,7 @@
     .choice h3{margin:0 0 5px}.choice p{font-size:.94rem;margin:0 0 12px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
     .big-choice{display:block;width:100%;text-align:left;background:#edf7ff;border:3px solid #193348;border-radius:18px;padding:20px;box-shadow:4px 4px 0 #193348;color:#193348}.big-choice:nth-child(2){background:#f8eaff}.big-choice strong{display:block;font-size:1.3rem;margin-bottom:6px}.big-choice span{font-size:.97rem}.big-choice.selected{outline:4px solid #ffbf4d}
     .primary,.secondary,.small{border:2px solid #193348;border-radius:12px;padding:11px 18px;font-weight:800;background:#ffce66;color:#193348;min-height:44px}.secondary{background:#fff}.small{padding:7px 12px;min-height:38px}
-    button:hover{filter:brightness(.96)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e0507e;outline-offset:2px}
+    button:disabled{opacity:.5;cursor:not-allowed}button:hover{filter:brightness(.96)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e0507e;outline-offset:2px}
     .notice{border-left:6px solid #ffbf4d;background:#fff6db;padding:12px 16px;border-radius:8px;margin:18px 0}.success{border-left-color:#4aa76b;background:#ebfaee}.error{border-left-color:#dc6680;background:#fff0f1}
     .table-wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:520px;margin-top:14px}th,td{border-bottom:1px solid #dbe3e8;padding:10px;text-align:left}th{background:#edf7ff}tr:nth-child(even) td{background:#fbfdff}td:first-child{font-weight:800}td.result{font-weight:900;font-size:1.08rem;background:#fff6db!important}
     input[type=number],select{border:2px solid #8199a9;border-radius:9px;padding:8px 10px;background:#fff;color:#193348;width:120px;max-width:100%}input[type=file]{max-width:100%}select.wide{width:auto;min-width:160px}
@@ -33,6 +33,9 @@
     .graph-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px}.graph-tabs button.active{background:#ffcf68}
     @media(max-width:680px){.choice-grid{grid-template-columns:1fr}.panel{padding:16px}.hero-mark{display:none}}
     @media print{.steps,.actions,.choice-grid,.graph-tabs,.top button,.bar-card label,.bar-card button,.bar-handle,.question select,.question button{display:none!important}.shell{padding:0}.panel,.hero{box-shadow:none}body{background:#fff}}
+    .lesson-nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:stretch;margin-top:28px;padding-top:20px;border-top:2px solid #dbe3e8}.lesson-nav button{width:100%;height:100%;min-height:64px}.lesson-nav .nav-caption{display:block;font-size:.78rem;font-weight:600;margin-bottom:4px}.lesson-nav .check-action{background:#c9f1e6}.lesson-tools{margin-top:20px;padding-top:12px;border-top:1px solid #dbe3e8}.lesson-tools summary{cursor:pointer;color:#526b79}.completion{text-align:center;padding:24px 8px}.completion h2{font-size:2rem}.print-only{display:none}
+    @media(max-width:540px){.lesson-nav{gap:6px}.lesson-nav button{font-size:.85rem;padding:9px 5px}.lesson-nav .nav-caption{font-size:.7rem}}
+    @media print{.lesson-nav,.lesson-tools,.completion{display:none!important}.print-only{display:block}}
     [hidden]{display:none!important}.welcome{text-align:center;padding:20px 8px 12px}.welcome-logo{display:block;width:min(100%,470px);height:auto;margin:0 auto 12px}.kids-word{display:flex;justify-content:center;align-items:center;gap:5px;margin-bottom:28px;font-family:"Comic Sans MS","Chalkboard SE",cursive;font-size:2.8rem;font-weight:900}.kids-word .for{font:700 1.2rem system-ui;margin-right:7px}.kids-word b{display:inline-block;border:2px solid #193348;border-radius:12px;padding:0 10px;box-shadow:3px 3px 0 #193348;transform:rotate(-7deg);background:#ffcf68}.kids-word b:nth-of-type(2){background:#a6e5ed;transform:rotate(6deg)}.kids-word b:nth-of-type(3){background:#e4c4ff;transform:rotate(-4deg)}.kids-word b:nth-of-type(4){background:#ffbdd1;transform:rotate(8deg)}.welcome h1{font-size:clamp(1.9rem,5vw,2.8rem)}.welcome p{max-width:540px;margin:14px auto}.welcome-path{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:24px 0}.welcome-path span{padding:10px 14px;background:#eaf8f3;border-radius:12px;font-weight:750}.welcome-form{max-width:350px;margin:24px auto 0;text-align:left}.welcome-form label{display:block;font-weight:800;margin-bottom:8px}.welcome-form input{width:100%;padding:12px;border:2px solid #8199a9;border-radius:12px;font:inherit}.welcome-form button{width:100%;margin-top:16px}.toast{position:fixed;bottom:20px;right:20px;max-width:min(430px,calc(100vw - 40px));background:#e6f8e9;border:3px solid #277a45;box-shadow:4px 4px 0 #193348;border-radius:16px;padding:16px 22px;font-size:1.12rem;font-weight:800;z-index:10;pointer-events:none}.toast.retry{background:#fff3d8;border-color:#a66a16}
     @media print{.toast{display:none!important}}
   </style>
@@ -49,18 +52,18 @@
 (() => {
   const copy = {
     es: {
-      welcome:'¡Bienvenidos, estudiantes de sexto grado!',welcomeQuestion:'¿Cómo cambia un movimiento con el tiempo?',welcomeDescription:'Sube los datos que marcaste en PhysTracker. La aplicación hace los cálculos; tu trabajo es construir la gráfica y explicar lo que muestra.',nameLabel:'Tu nombre o apodo (opcional)',namePlaceholder:'¿Cómo te llamas?',start:'¡Vamos a empezar!',wellDone:'¡Muy bien{name}!',keepTrying:'¡Sigue intentando{name}!',stepsLabel:'Pasos',
-      brand:'🚀 PhysTracker for Kids',title:'Laboratorio de gráficas de movimiento',subtitle:'Trae tus datos de PhysTracker. La aplicación calcula; tú construyes la gráfica y lees lo que dice.',steps:['1. Elige','2. Datos','3. Resultados','4. Gráfica'],
+      welcome:'¡Bienvenidos, estudiantes de sexto grado!',welcomeQuestion:'¿Cómo cambia un movimiento con el tiempo?',welcomeDescription:'Sube los datos que marcaste en PhysiCam. La aplicación hace los cálculos; tu trabajo es construir la gráfica y explicar lo que muestra.',nameLabel:'Tu nombre o apodo (opcional)',namePlaceholder:'¿Cómo te llamas?',start:'¡Vamos a empezar!',wellDone:'¡Muy bien{name}!',keepTrying:'¡Sigue intentando{name}!',stepsLabel:'Pasos',
+      brand:'🚀 PhysTracker for Kids',title:'Laboratorio de gráficas de movimiento',subtitle:'Trae tus datos de PhysiCam. La aplicación calcula; tú construyes la gráfica y lees lo que dice.',steps:['1. Elige','2. Datos','3. Resultados','4. Gráfica'],
       choose:'¿Qué marcaste en tu video?',chooseIntro:'Elige el tipo de movimiento.',runnerTitle:'🏃 Corredor — movimiento horizontal',runnerHelp:'Algo que se mueve por el suelo. Usamos el tiempo y X.',rocketTitle:'🚀 Cohete — movimiento vertical',rocketHelp:'Algo que sube (y quizás vuelve a bajar). Usamos el tiempo e Y.',
-      dataTitle_runner:'Trae los datos del corredor',dataTitle_rocket:'Trae los datos del cohete',upload:'Subir desde PhysTracker',uploadHelp_runner:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo y X.',uploadHelp_rocket:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo e Y.',import:'Elegir CSV',sample:'Puntos a usar',sampleHelp_runner:'Si el archivo tiene más puntos, elegimos puntos repartidos por toda la carrera.',sampleHelp_rocket:'Si el archivo tiene más puntos, elegimos puntos repartidos por todo el vuelo y siempre guardamos el más alto.',manual:'Escribir los datos',manualHelp:'Llena la tabla tú mismo o prueba un ejemplo.',demoRunner:'Carrera de ejemplo',demoBig:'Ejemplo: cohete grande',demoWater:'Ejemplo: cohete de agua',
+      dataTitle_runner:'Trae los datos del corredor',dataTitle_rocket:'Trae los datos del cohete',upload:'Subir desde PhysiCam',uploadHelp_runner:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo y X.',uploadHelp_rocket:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo e Y.',import:'Elegir CSV',sample:'Puntos a usar',sampleHelp_runner:'Si el archivo tiene más puntos, elegimos puntos repartidos por toda la carrera.',sampleHelp_rocket:'Si el archivo tiene más puntos, elegimos puntos repartidos por todo el vuelo y siempre guardamos el más alto.',manual:'Escribir los datos',manualHelp:'Llena la tabla tú mismo o prueba un ejemplo.',demoRunner:'Carrera de ejemplo',demoBig:'Ejemplo: cohete grande',demoWater:'Ejemplo: cohete de agua',
       point:'Punto',time:'Tiempo (s)',position:'Posición X (m)',heightCol:'Altura Y (m)',remove:'Quitar',add:'Agregar punto',toResults:'Ver los resultados →',backChoose:'← Cambiar de movimiento',
-      notice_runner:'Antes de subir: PhysTracker debe estar calibrado en metros (usa las marcas de 3 m). Marca al corredor en cada cronometrista.',notice_rocket:'Antes de subir: PhysTracker debe estar calibrado en metros, con el origen en la plataforma de lanzamiento y el eje Y hacia arriba.',
-      fileError:'No pude leer este CSV. Usa el archivo “motion_data” de PhysTracker o escribe los datos.',noY:'Este CSV no tiene columna Y, así que no sirve para un cohete.',imported:'Importé {used} de {total} puntos. Revisa la tabla antes de seguir.',needPoints:'Necesitas entre {min} y {max} puntos completos.',timeError:'Los tiempos deben aumentar de un punto al siguiente.',negHeights:'Casi todas las alturas son menores que cero. Comprueba que el eje Y apunta hacia arriba en PhysTracker.',
+      notice_runner:'Antes de subir: PhysiCam debe estar calibrado en metros (usa las marcas de 3 m). Marca al corredor en cada cronometrista.',notice_rocket:'Antes de subir: PhysiCam debe estar calibrado en metros, con el origen en la plataforma de lanzamiento y el eje Y hacia arriba.',
+      fileError:'No pude leer este CSV. Usa el archivo “motion_data” de PhysiCam o escribe los datos.',noY:'Este CSV no tiene columna Y, así que no sirve para un cohete.',imported:'Importé {used} de {total} puntos. Revisa la tabla antes de seguir.',needPoints:'Necesitas entre {min} y {max} puntos completos.',timeError:'Los tiempos deben aumentar de un punto al siguiente.',negHeights:'Casi todas las alturas son menores que cero. Comprueba que el eje Y apunta hacia arriba en PhysiCam.',
       results_runner:'La aplicación calculó la rapidez de cada intervalo',results_rocket:'La aplicación calculó la altura y la velocidad',resultsIntro_runner:'Un intervalo va de un punto al siguiente. La aplicación ya hizo la división; tu trabajo es leer la tabla.',resultsIntro_rocket:'Cada punto dice qué tan alto estaba el cohete. Cada intervalo va de un punto al siguiente. Velocidad positiva: sube. Negativa: baja.',formula_runner:'rapidez media = distancia recorrida ÷ tiempo empleado',formula_rocket:'velocidad = cambio de altura ÷ tiempo empleado',
       pointsTable:'Altura en cada punto',intervalsTable:'Velocidad en cada intervalo',interval:'Intervalo',times:'Tiempo (s)',distance:'Distancia (m)',dt:'Tiempo empleado (s)',speed:'Rapidez media (m/s)',height:'Altura (m)',dh:'Cambio de altura (m)',velocity:'Velocidad (m/s)',
       readThink_runner:'Lee: ¿qué intervalo tiene la mayor rapidez? ¿Dónde acelera el corredor y dónde va más despacio?',readThink_rocket:'Lee: ¿a qué altura está el cohete en el último punto? ¿La velocidad se hace más grande o más pequeña?',
       toGraph:'Construir una gráfica →',back:'← Volver a los datos',backResults:'← Volver a los resultados',pickGraph:'¿Qué gráfica quieres construir?',heightGraph:'📈 Gráfica altura–tiempo',heightGraphHelp:'Descubre qué tan alto estaba el cohete en cada momento y su altura máxima.',velocityGraph:'🚀 Gráfica velocidad–tiempo',velocityGraphHelp:'Descubre cómo cambió la velocidad y su velocidad máxima.',
-      graph:'Construye tu gráfica de barras',graphIntro:'Arrastra la parte superior de cada barra hasta el valor de su tarjeta, o escríbelo. Después comprueba una barra o todas.',scale:'Elige el máximo del eje vertical',scaleHelp:'Debe ser igual o mayor que el valor más grande.',scaleError:'El máximo del eje vertical es demasiado pequeño para tus datos.',barHeight:'Altura de la barra',checkBar:'Comprobar barra',checkGraph:'Comprobar toda la gráfica',higher:'Súbela un poco',lower:'Bájala un poco',placeBar:'Mueve la barra primero',correct:'¡Correcto!',dragBar:'Arrastra la barra',keyboardHelp:'También puedes usar las flechas del teclado o escribir la altura en la tarjeta.',graphGood:'¡Tu gráfica está lista! Ahora responde la pregunta de abajo.',graphTry:'Revisa las barras marcadas. Cada una debe coincidir con su tarjeta.',cards:'Los valores que calculó la aplicación',negNote:'Las barras debajo de cero significan que el cohete está bajando.',
+      graph:'Construye tu gráfica de barras',graphIntro:'Arrastra la parte superior de cada barra hasta el valor de su tarjeta. Después comprueba una barra o todas.',scale:'Elige el máximo del eje vertical',scaleHelp:'Debe ser igual o mayor que el valor más grande.',scaleError:'El máximo del eje vertical es demasiado pequeño para tus datos.',barHeight:'Altura de la barra',checkBar:'Comprobar barra',checkGraph:'Comprobar toda la gráfica',higher:'Súbela un poco',lower:'Bájala un poco',placeBar:'Mueve la barra primero',correct:'¡Correcto!',dragBar:'Arrastra la barra',keyboardHelp:'Lee la escala y mueve cada barra hacia arriba o abajo. También puedes seleccionar una barra y usar las flechas del teclado.',graphGood:'¡Tu gráfica está lista! Ahora responde la pregunta de abajo.',graphTry:'Revisa las barras marcadas. Cada una debe coincidir con su tarjeta.',cards:'Los valores que calculó la aplicación',negNote:'Las barras debajo de cero significan que el cohete está bajando.',
       axisSpeed:'Rapidez media (m/s)',axisHeight:'Altura (m)',axisVelocity:'Velocidad (m/s)',axisInterval:'Intervalo',axisTime:'Tiempo (s)',
       q_speed:'¿En qué intervalo corrió más rápido?',q_height:'¿En qué momento estuvo más alto el cohete?',q_velocity:'¿En qué intervalo subía más rápido el cohete?',chooseOne:'Elige…',checkAnswer:'Comprobar respuesta',
       a_speed:'¡Sí! Intervalo {i}: {v} m/s. Anótalo en tu hoja y explica cómo lo muestra la gráfica.',a_height:'¡Sí! A los {t} s el cohete estaba a {v} m de altura, la altura máxima de tus datos.',a_velocity:'¡Sí! Intervalo {i} ({t1}–{t2} s): {v} m/s, la velocidad máxima de tus datos.',a_wrong:'Ese no. Busca la barra más alta.',
@@ -68,18 +71,18 @@
       print:'Imprimir mi gráfica',restart:'Empezar de nuevo',empty:'—'
     },
     en: {
-      welcome:'Welcome, sixth graders!',welcomeQuestion:'How does motion change over time?',welcomeDescription:'Upload the data you tracked in PhysTracker. The app does the calculations; your job is to build the graph and explain what it shows.',nameLabel:'First name or nickname (optional)',namePlaceholder:'What should we call you?',start:'Let’s start!',wellDone:'Well done{name}!',keepTrying:'Keep trying{name}!',stepsLabel:'Steps',
-      brand:'🚀 PhysTracker for Kids',title:'Motion graph lab',subtitle:'Bring your PhysTracker data. The app calculates; you build the graph and read what it says.',steps:['1. Choose','2. Data','3. Results','4. Graph'],
+      welcome:'Welcome, sixth graders!',welcomeQuestion:'How does motion change over time?',welcomeDescription:'Upload the data you tracked in PhysiCam. The app does the calculations; your job is to build the graph and explain what it shows.',nameLabel:'First name or nickname (optional)',namePlaceholder:'What should we call you?',start:'Let’s start!',wellDone:'Well done{name}!',keepTrying:'Keep trying{name}!',stepsLabel:'Steps',
+      brand:'🚀 PhysTracker for Kids',title:'Motion graph lab',subtitle:'Bring your PhysiCam data. The app calculates; you build the graph and read what it says.',steps:['1. Choose','2. Data','3. Results','4. Graph'],
       choose:'What did you track in your video?',chooseIntro:'Pick the kind of motion.',runnerTitle:'🏃 Runner — horizontal motion',runnerHelp:'Something moving along the ground. We use time and X.',rocketTitle:'🚀 Rocket — vertical motion',rocketHelp:'Something going up (and maybe coming back down). We use time and Y.',
-      dataTitle_runner:'Bring in the runner data',dataTitle_rocket:'Bring in the rocket data',upload:'Upload from PhysTracker',uploadHelp_runner:'Choose the “motion_data” CSV you downloaded. We read Time and X.',uploadHelp_rocket:'Choose the “motion_data” CSV you downloaded. We read Time and Y.',import:'Choose CSV',sample:'Points to use',sampleHelp_runner:'If the file has more points, we pick points spread across the run.',sampleHelp_rocket:'If the file has more points, we pick points spread across the flight and always keep the highest one.',manual:'Type the data',manualHelp:'Fill in the table yourself, or try an example.',demoRunner:'Example run',demoBig:'Example: big rocket',demoWater:'Example: water rocket',
+      dataTitle_runner:'Bring in the runner data',dataTitle_rocket:'Bring in the rocket data',upload:'Upload from PhysiCam',uploadHelp_runner:'Choose the “motion_data” CSV you downloaded. We read Time and X.',uploadHelp_rocket:'Choose the “motion_data” CSV you downloaded. We read Time and Y.',import:'Choose CSV',sample:'Points to use',sampleHelp_runner:'If the file has more points, we pick points spread across the run.',sampleHelp_rocket:'If the file has more points, we pick points spread across the flight and always keep the highest one.',manual:'Type the data',manualHelp:'Fill in the table yourself, or try an example.',demoRunner:'Example run',demoBig:'Example: big rocket',demoWater:'Example: water rocket',
       point:'Point',time:'Time (s)',position:'Position X (m)',heightCol:'Height Y (m)',remove:'Remove',add:'Add point',toResults:'See the results →',backChoose:'← Change motion',
-      notice_runner:'Before uploading: PhysTracker must be calibrated in meters (use the 3 m marks). Mark the runner at each timer.',notice_rocket:'Before uploading: PhysTracker must be calibrated in meters, with the origin at the launch pad and the Y axis pointing up.',
-      fileError:'I could not read this CSV. Use the “motion_data” file from PhysTracker, or type the data.',noY:'This CSV has no Y column, so it cannot be used for a rocket.',imported:'Imported {used} of {total} points. Check the table before continuing.',needPoints:'You need between {min} and {max} complete points.',timeError:'Times must increase from one point to the next.',negHeights:'Most heights are below zero. Check that the Y axis points up in PhysTracker.',
+      notice_runner:'Before uploading: PhysiCam must be calibrated in meters (use the 3 m marks). Mark the runner at each timer.',notice_rocket:'Before uploading: PhysiCam must be calibrated in meters, with the origin at the launch pad and the Y axis pointing up.',
+      fileError:'I could not read this CSV. Use the “motion_data” file from PhysiCam, or type the data.',noY:'This CSV has no Y column, so it cannot be used for a rocket.',imported:'Imported {used} of {total} points. Check the table before continuing.',needPoints:'You need between {min} and {max} complete points.',timeError:'Times must increase from one point to the next.',negHeights:'Most heights are below zero. Check that the Y axis points up in PhysiCam.',
       results_runner:'The app calculated the speed in each interval',results_rocket:'The app calculated the height and the velocity',resultsIntro_runner:'An interval goes from one point to the next. The app already did the division; your job is to read the table.',resultsIntro_rocket:'Each point tells how high the rocket was. Each interval goes from one point to the next. Positive velocity: going up. Negative: coming down.',formula_runner:'average speed = distance travelled ÷ time taken',formula_rocket:'velocity = change in height ÷ time taken',
       pointsTable:'Height at each point',intervalsTable:'Velocity in each interval',interval:'Interval',times:'Time (s)',distance:'Distance (m)',dt:'Time taken (s)',speed:'Average speed (m/s)',height:'Height (m)',dh:'Change in height (m)',velocity:'Velocity (m/s)',
       readThink_runner:'Read: which interval has the greatest speed? Where is the runner speeding up, and where slowing down?',readThink_rocket:'Read: how high is the rocket at the last point? Is the velocity getting bigger or smaller?',
       toGraph:'Build a graph →',back:'← Back to data',backResults:'← Back to results',pickGraph:'Which graph do you want to build?',heightGraph:'📈 Height–time graph',heightGraphHelp:'Find how high the rocket was at each time, and its greatest height.',velocityGraph:'🚀 Velocity–time graph',velocityGraphHelp:'Find how the velocity changed, and its greatest velocity.',
-      graph:'Build your bar graph',graphIntro:'Drag the top of each bar to the value on its card, or type it. Then check one bar or all of them.',scale:'Choose the top of the vertical axis',scaleHelp:'It must be at least as big as the biggest value.',scaleError:'The top of the vertical axis is too small for your data.',barHeight:'Bar height',checkBar:'Check bar',checkGraph:'Check whole graph',higher:'Move it a little higher',lower:'Move it a little lower',placeBar:'Move the bar first',correct:'Correct!',dragBar:'Drag bar',keyboardHelp:'You can also use the arrow keys or type a height in the card.',graphGood:'Your graph is ready! Now answer the question below.',graphTry:'Check the marked bars. Each one must match its card.',cards:'The values the app calculated',negNote:'Bars below zero mean the rocket is coming down.',
+      graph:'Build your bar graph',graphIntro:'Drag the top of each bar to match the value on its card. Then check one bar or all of them.',scale:'Choose the top of the vertical axis',scaleHelp:'It must be at least as big as the biggest value.',scaleError:'The top of the vertical axis is too small for your data.',barHeight:'Bar height',checkBar:'Check bar',checkGraph:'Check whole graph',higher:'Move it a little higher',lower:'Move it a little lower',placeBar:'Move the bar first',correct:'Correct!',dragBar:'Drag bar',keyboardHelp:'Read the scale and move each bar up or down. You can also select a bar and use the arrow keys.',graphGood:'Your graph is ready! Now answer the question below.',graphTry:'Check the marked bars. Each one must match its card.',cards:'The values the app calculated',negNote:'Bars below zero mean the rocket is coming down.',
       axisSpeed:'Average speed (m/s)',axisHeight:'Height (m)',axisVelocity:'Velocity (m/s)',axisInterval:'Interval',axisTime:'Time (s)',
       q_speed:'During which interval was the runner fastest?',q_height:'At which time was the rocket highest?',q_velocity:'During which interval was the rocket going up fastest?',chooseOne:'Choose…',checkAnswer:'Check answer',
       a_speed:'Yes! Interval {i}: {v} m/s. Write it on your sheet and explain how the graph shows it.',a_height:'Yes! At {t} s the rocket was {v} m high — the greatest height in your data.',a_velocity:'Yes! Interval {i} ({t1}–{t2} s): {v} m/s — the greatest velocity in your data.',a_wrong:'Not that one. Look for the tallest bar.',
@@ -87,11 +90,49 @@
       print:'Print my graph',restart:'Start again',empty:'—'
     }
   };
+  Object.assign(copy.en, {
+    welcomeDescription:'Copy time and position from your PhysiCam table. Explore speed, calculate acceleration, and build your graphs.',
+    subtitle:'Copy your measurements. Explore speed and acceleration. Build and explain your graphs.',
+    manual:'Copy your measurements', manualHelp:'Keep your PhysiCam table beside this page. Copy one time and one position into each row, in the same order. Or try an example first.',
+    notice_runner:'Use metres in PhysiCam and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Copy Time and X below.',
+    notice_rocket:'Use metres in PhysiCam, put the origin at the launch pad, and point Y upward. Copy Time and Y below.',
+    timeError:'Times must increase by at least 0.01 s from one point to the next.', accelCards:'The accelerations you calculated', accelGraphTitle:'Build your acceleration–time bar graph', accelTitle:'How did the speed change?', accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Calculate each acceleration yourself. Write one or two digits after the decimal point. A close estimate is OK!',
+    accelFormula:'average acceleration = change in speed ÷ time between the speeds', accelUnitHelp:'m/s/s means metres per second per second',
+    midpointHelp:'Each speed is an average over a whole interval. We place it halfway through that interval. The time below is the gap between those two halfway times. This gives us an estimate of acceleration.',
+    comparison:'Compare intervals', speedChange:'Speed goes from → to (m/s)', elapsed:'Time between speeds (s)', changeInput:'Your speed change (m/s)', accelInput:'Your acceleration (m/s/s)', halfway:'Halfway times',
+    accelSign:'Positive: speeding up. Negative: slowing down. Zero: the speed stays the same. This activity assumes the runner keeps moving in the same direction.',
+    checkAccel:'Check my calculations', accelReady:'All calculations are correct! Build your acceleration graph.', accelRetry:'Check the highlighted answers. Use next speed − first speed, then divide by the time shown. Try one or two digits after the decimal point. A close estimate is OK.',
+    accelNext:'Explore acceleration →', accelGraph:'Build acceleration graph →', backSpeed:'← Back to speed graph', backAccel:'← Back to acceleration table',
+    axisAcceleration:'Average acceleration (m/s/s)', axisAccelTime:'Time of comparison (s)', accelGraphIntro:'Use the accelerations you calculated to build the bars. Each bar is one comparison; the gaps between bars do not measure elapsed time. Bars below zero show slowing down.',
+    accelNegative:'Below zero means slowing down; above zero means speeding up.', accelGraphGood:'Your acceleration graph is ready! Explain where the runner speeds up, slows down, or keeps the same speed.',
+    accelThink:'Compare your two graphs: does the greatest speed happen at the same time as the greatest acceleration? Explain.',
+    runnerSteps:['1. Choose','2. Copy data','3. Speed results','4. Speed graph','5. Acceleration','6. Acceleration graph']
+  });
+  Object.assign(copy.es, {
+    welcomeDescription:'Copia el tiempo y la posición de tu tabla de PhysiCam. Explora la rapidez, calcula la aceleración y construye tus gráficas.',
+    subtitle:'Copia tus mediciones. Explora la rapidez y la aceleración. Construye y explica tus gráficas.',
+    manual:'Copia tus mediciones', manualHelp:'Pon tu tabla de PhysiCam al lado de esta página. Copia un tiempo y una posición en cada fila, en el mismo orden. O prueba primero un ejemplo.',
+    notice_runner:'Usa metros en PhysiCam y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Copia el tiempo y X abajo.',
+    notice_rocket:'Usa metros en PhysiCam, coloca el origen en la plataforma y orienta Y hacia arriba. Copia el tiempo e Y abajo.',
+    timeError:'Los tiempos deben aumentar al menos 0.01 s de un punto al siguiente.', accelCards:'Las aceleraciones que calculaste', accelGraphTitle:'Construye tu gráfica de barras aceleración–tiempo', accelTitle:'¿Cómo cambió la rapidez?', accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Calcula cada aceleración tú mismo. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
+    accelFormula:'aceleración media = cambio de rapidez ÷ tiempo entre las rapideces', accelUnitHelp:'m/s/s significa metros por segundo por segundo',
+    midpointHelp:'Cada rapidez es un promedio de todo un intervalo. La ubicamos a la mitad de ese intervalo. El tiempo de abajo es la diferencia entre esas dos mitades. Así estimamos la aceleración.',
+    comparison:'Compara intervalos', speedChange:'La rapidez va de → a (m/s)', elapsed:'Tiempo entre rapideces (s)', changeInput:'Tu cambio de rapidez (m/s)', accelInput:'Tu aceleración (m/s/s)', halfway:'Tiempos a la mitad',
+    accelSign:'Positiva: aumenta la rapidez. Negativa: disminuye. Cero: la rapidez se mantiene. Esta actividad supone que el corredor sigue en la misma dirección.',
+    checkAccel:'Comprobar mis cálculos', accelReady:'¡Todos los cálculos están correctos! Construye tu gráfica de aceleración.', accelRetry:'Revisa las respuestas marcadas. Usa rapidez siguiente − rapidez anterior y divide por el tiempo mostrado. Prueba con uno o dos números después del punto decimal. Aceptamos una respuesta aproximada.',
+    accelNext:'Explorar la aceleración →', accelGraph:'Construir gráfica de aceleración →', backSpeed:'← Volver a la gráfica de rapidez', backAccel:'← Volver a la tabla de aceleración',
+    axisAcceleration:'Aceleración media (m/s/s)', axisAccelTime:'Tiempo de comparación (s)', accelGraphIntro:'Usa las aceleraciones que calculaste para construir las barras. Cada barra es una comparación; la separación entre barras no mide el tiempo transcurrido. Las barras bajo cero muestran que la rapidez disminuye.',
+    accelNegative:'Bajo cero: disminuye la rapidez. Sobre cero: aumenta la rapidez.', accelGraphGood:'¡Tu gráfica de aceleración está lista! Explica dónde aumenta, disminuye o se mantiene la rapidez del corredor.',
+    accelThink:'Compara tus dos gráficas: ¿la mayor rapidez ocurre al mismo tiempo que la mayor aceleración? Explica.',
+    runnerSteps:['1. Elige','2. Copia datos','3. Rapidez','4. Gráfica de rapidez','5. Aceleración','6. Gráfica de aceleración']
+  });
+  Object.assign(copy.en, {previousStep:'← Previous step',nextStep:'Next step →',navChoose:'Choose motion',navData:'Runner data',navRocketData:'Rocket data',navResults:'Speed results',navRocketResults:'Rocket results',navSpeed:'Speed graph',navAccel:'Acceleration table',navAccelGraph:'Acceleration graph',navGraph:'Build a graph',navPick:'Choose a graph',checkGraph:'Check my graph',tools:'Print or start again',restartQuestion:'Start again? This will clear your measurements, answers, and graphs.',cancelRestart:'Keep my work',confirmRestart:'Clear work and start again',finish:'Finish activity ✓',finishedTitle:'Activity complete!',finishedText:'You have checked your graph. Share what it tells you with your teacher.',reviewGraph:'← Review my graph',finishHint:'Check your graph before finishing.'});
+  Object.assign(copy.es, {previousStep:'← Paso anterior',nextStep:'Siguiente paso →',navChoose:'Elegir movimiento',navData:'Datos del corredor',navRocketData:'Datos del cohete',navResults:'Resultados de rapidez',navRocketResults:'Resultados del cohete',navSpeed:'Gráfica de rapidez',navAccel:'Tabla de aceleración',navAccelGraph:'Gráfica de aceleración',navGraph:'Construir una gráfica',navPick:'Elegir una gráfica',checkGraph:'Comprobar mi gráfica',tools:'Imprimir o empezar de nuevo',restartQuestion:'¿Empezar de nuevo? Se borrarán tus mediciones, respuestas y gráficas.',cancelRestart:'Conservar mi trabajo',confirmRestart:'Borrar y empezar de nuevo',finish:'Terminar actividad ✓',finishedTitle:'¡Actividad terminada!',finishedText:'Comprobaste tu gráfica. Comparte con tu docente lo que muestra.',reviewGraph:'← Revisar mi gráfica',finishHint:'Comprueba tu gráfica antes de terminar.'});
   // Per mode: significant figures shown, and the 6–N point limits.
   const SIG={runner:2,rocket:3},LIMITS={runner:[6,10],rocket:[6,12]};
   const $ = s => document.querySelector(s);
   const blankRows = () => Array.from({length:8},()=>({t:'',v:''}));
-  const state = {lang:'en',welcomed:false,name:'',mode:null,stage:0,rows:blankRows(),graphType:null,g:{},message:'',kind:''};
+  const state = {lang:'en',welcomed:false,name:'',mode:null,stage:0,rows:blankRows(),graphType:null,g:{},accelAnswers:[],accelChecked:false,message:'',kind:''};
   const t = key => copy[state.lang][key];
   const tm = key => t(`${key}_${state.mode}`);
   const sig = () => SIG[state.mode]||2;
@@ -113,14 +154,15 @@
     const ints=p.slice(1).map((q,i)=>{const dt=Number((q.t-p[i].t).toFixed(2)),raw=pos[i+1]-pos[i],d=roundSig(state.mode==='runner'?Math.abs(raw):raw);return {t1:p[i].t,t2:q.t,d,dt,val:d/dt};});
     return {p,pos,ints};
   }
-  const graphKey = () => state.mode==='runner'?'speed':state.graphType;
+  const graphKey = () => state.mode==='runner'?(state.stage===5?'acceleration':'speed'):state.graphType;
   function G(){const k=graphKey();return state.g[k]||(state.g[k]={heights:[],checked:[],scale:null,answer:'',answerChecked:false});}
   function targets(){
     const s=series();
+    if(graphKey()==='acceleration')return accelerations().map((r,i)=>({label:fmtTime(r.time),title:`${t('comparison')} ${i+1} → ${i+2}`,when:`${fmtTime(r.time)} s`,value:r.value}));
     if(graphKey()==='height')return s.p.map((q,i)=>({label:fmtTime(q.t),title:`${t('time')}: ${fmtTime(q.t)}`,value:roundSig(s.pos[i]),t:q.t}));
     return s.ints.map((r,i)=>({label:String(i+1),title:`${t('interval')} ${i+1}`,when:`${fmtTime(r.t1)}–${fmtTime(r.t2)} s`,value:roundSig(r.val),t1:r.t1,t2:r.t2}));
   }
-  const unit = () => graphKey()==='height'?'m':'m/s';
+  const unit = () => graphKey()==='acceleration'?'m/s/s':graphKey()==='height'?'m':'m/s';
   const best = () => {const tg=targets();return tg.reduce((b,x,i)=>x.value>tg[b].value?i:b,0);};
   function niceStep(span){const raw=span/10,p=10**Math.floor(Math.log10(raw));return [1,2,5,10].map(m=>m*p).find(s=>s>=raw-1e-12);}
   const maxVal = () => Math.max(0,...targets().map(x=>x.value));
@@ -145,7 +187,7 @@
   function validate(){
     const [mn,mx]=LIMITS[state.mode];
     if(state.rows.length<mn||state.rows.length>mx||state.rows.some(r=>r.t===''||r.v===''||!Number.isFinite(Number(r.t))||!Number.isFinite(Number(r.v))))return 'needPoints';
-    if(state.rows.some((r,i)=>i>0&&Number(r.t)<=Number(state.rows[i-1].t)))return 'timeError';
+    if(state.rows.some((r,i)=>i>0&&Number(r.t)-Number(state.rows[i-1].t)<0.01))return 'timeError';
     return null;
   }
   function notice(){return state.message?`<div class="notice ${state.kind}" role="status">${esc(state.message)}</div>`:'';}
@@ -154,8 +196,8 @@
     document.documentElement.lang=state.lang;$('#brand').textContent=t('brand');$('#title').textContent=t('title');$('#subtitle').textContent=t('subtitle');$('#language').textContent=state.lang==='es'?'English':'Español';
     document.title=`PhysTracker for Kids · ${t('title')}`;
     $('.hero').hidden=!state.welcomed;$('#steps').hidden=!state.welcomed;$('#steps').setAttribute('aria-label',t('stepsLabel'));
-    $('#steps').innerHTML=copy[state.lang].steps.map((s,i)=>`<span class="step ${i===state.stage?'active':i<state.stage?'done':''}" ${i===state.stage?'aria-current="step"':''}>${s}</span>`).join('');
-    $('#app').innerHTML=!state.welcomed?welcomeView():[chooseView,dataView,resultsView,graphView][state.stage]();
+    $('#steps').innerHTML=(state.mode==='runner'?t('runnerSteps'):copy[state.lang].steps).map((s,i)=>`<span class="step ${i===state.stage?'active':(i<state.stage||state.finished)?'done':''}" ${i===state.stage?'aria-current="step"':''}>${s}</span>`).join('');
+    $('#app').innerHTML=!state.welcomed?welcomeView():state.finished?completionView():[chooseView,dataView,resultsView,graphView,accelerationView,graphView][state.stage]();
     if($('.graph-area'))$('.graph-area').scrollLeft=graphScroll;
   }
   function welcomeView(){return `<div class="welcome"><img class="welcome-logo" src="assets/phystracker-logo.png" alt="PhysTracker"><div class="kids-word" aria-label="for Kids"><span class="for" aria-hidden="true">for</span><b aria-hidden="true">K</b><b aria-hidden="true">i</b><b aria-hidden="true">d</b><b aria-hidden="true">s</b></div><h1>${t('welcome')}</h1><p><strong>${t('welcomeQuestion')}</strong></p><p>${t('welcomeDescription')}</p><div class="welcome-path">${copy[state.lang].steps.map((label,i)=>`<span>${['🧭','📂','🧮','📊'][i]} ${label}</span>`).join('')}</div><form id="welcome-form" class="welcome-form"><label for="student-name">${t('nameLabel')}</label><input id="student-name" type="text" maxlength="32" autocomplete="off" placeholder="${t('namePlaceholder')}" value="${esc(state.name)}"><button type="submit" class="primary">${t('start')}</button></form></div>`;}
@@ -170,10 +212,16 @@
   $('#app').addEventListener('submit',e=>{if(e.target.id!=='welcome-form')return;e.preventDefault();state.name=state.name.trim();state.welcomed=true;render();const heading=$('#app h2');heading.setAttribute('tabindex','-1');heading.focus();});
 
   function chooseView(){return `<h2>${t('choose')}</h2><p class="intro">${t('chooseIntro')}</p><div class="choice-grid"><button class="big-choice ${state.mode==='runner'?'selected':''}" data-action="mode" data-mode="runner"><strong>${t('runnerTitle')}</strong><span>${t('runnerHelp')}</span></button><button class="big-choice ${state.mode==='rocket'?'selected':''}" data-action="mode" data-mode="rocket"><strong>${t('rocketTitle')}</strong><span>${t('rocketHelp')}</span></button></div>`;}
+  function navigation(back,check,next){
+    const button=(item,position)=>item?`<button class="${position==='next'?'primary':position==='check'?'secondary check-action':'secondary'}" data-action="${item.action}" ${item.disabled?'disabled':''}>${position!=='check'?`<span class="nav-caption">${t(position==='back'?'previousStep':'nextStep')}</span>`:''}${t(item.label)}</button>`:'';
+    return `<nav class="lesson-nav" aria-label="${t('stepsLabel')}"><div>${button(back,'back')}</div><div>${button(check,'check')}</div><div>${button(next,'next')}</div></nav>`;
+  }
+  function toolsView(){return `<details class="lesson-tools" ${state.restartPending?'open':''}><summary>${t('tools')}</summary><div class="actions">${state.stage>=3&&state.stage!==4?`<button class="small" data-action="print">${t('print')}</button>`:''}<button class="small" data-action="restart">${t('restart')}</button></div>${state.restartPending?`<div class="notice" role="alert"><p>${t('restartQuestion')}</p><div class="actions"><button class="secondary" data-action="cancel-restart">${t('cancelRestart')}</button><button class="secondary" data-action="confirm-restart">${t('confirmRestart')}</button></div></div>`:''}</details>`;}
+  function completionView(){return `<div class="completion"><h2>✓ ${t('finishedTitle')}</h2><p>${t('finishedText')}</p><div class="actions"><button class="secondary" data-action="review-graph">${t('reviewGraph')}</button><button class="primary" data-action="print">${t('print')}</button></div></div>${toolsView()}<div class="print-only">${graphView(false)}</div>`;}
   function dataView(){
     const [mn,mx]=LIMITS[state.mode],col=state.mode==='runner'?t('position'):t('heightCol');
     const demos=state.mode==='runner'?`<button class="small" data-action="demo" data-demo="runner">${t('demoRunner')}</button>`:`<button class="small" data-action="demo" data-demo="big">${t('demoBig')}</button> <button class="small" data-action="demo" data-demo="water">${t('demoWater')}</button>`;
-    return `<h2>${tm('dataTitle')}</h2><div class="choice-grid"><div class="choice"><h3>📂 ${t('upload')}</h3><p>${tm('uploadHelp')}</p><label>${t('sample')} <select id="sample-count">${Array.from({length:mx-mn+1},(_,i)=>mn+i).map(n=>`<option ${n===10?'selected':''}>${n}</option>`).join('')}</select></label><p class="muted">${tm('sampleHelp')}</p><input id="csv" type="file" accept=".csv,text/csv" aria-label="${t('import')}"></div><div class="choice"><h3>✏️ ${t('manual')}</h3><p>${t('manualHelp')}</p>${demos}</div></div><div class="notice">${tm('notice')}</div>${notice()}<div class="table-wrap"><table><thead><tr><th>${t('point')}</th><th>${t('time')}</th><th>${col}</th><th></th></tr></thead><tbody>${state.rows.map((r,i)=>`<tr><td>${i+1}</td><td><input type="number" inputmode="decimal" step="any" data-field="t" data-index="${i}" value="${esc(r.t)}" aria-label="${t('time')} ${i+1}"></td><td><input type="number" inputmode="decimal" step="any" data-field="v" data-index="${i}" value="${esc(r.v)}" aria-label="${col} ${i+1}"></td><td><button class="small" data-action="remove" data-index="${i}" ${state.rows.length<=mn?'disabled':''}>${t('remove')}</button></td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="secondary" data-action="back-choose">${t('backChoose')}</button><button class="secondary" data-action="add" ${state.rows.length>=mx?'disabled':''}>＋ ${t('add')}</button><button class="primary" data-action="results">${t('toResults')}</button></div>`;
+    return `<h2>${tm('dataTitle')}</h2><div class="choice"><h3>✏️ ${t('manual')}</h3><p>${t('manualHelp')}</p>${demos}</div><div class="notice">${tm('notice')}</div>${notice()}<div class="table-wrap"><table><thead><tr><th>${t('point')}</th><th>${t('time')}</th><th>${col}</th><th></th></tr></thead><tbody>${state.rows.map((r,i)=>`<tr><td>${i+1}</td><td><input type="number" inputmode="decimal" step="any" data-field="t" data-index="${i}" value="${esc(r.t)}" aria-label="${t('time')} ${i+1}"></td><td><input type="number" inputmode="decimal" step="any" data-field="v" data-index="${i}" value="${esc(r.v)}" aria-label="${col} ${i+1}"></td><td><button class="small" data-action="remove" data-index="${i}" ${state.rows.length<=mn?'disabled':''}>${t('remove')}</button></td></tr>`).join('')}</tbody></table></div><div class="actions"><button class="secondary" data-action="add" ${state.rows.length>=mx?'disabled':''}>＋ ${t('add')}</button></div>${navigation({action:'back-choose',label:'navChoose'},null,{action:'results',label:state.mode==='runner'?'navResults':'navRocketResults'})}${toolsView()}`;
   }
   function resultsView(){
     const s=series();
@@ -184,13 +232,34 @@
       pointsTable=`<h3>${t('pointsTable')}</h3><div class="table-wrap"><table><thead><tr><th>${t('point')}</th><th>${t('time')}</th><th>${t('height')}</th></tr></thead><tbody>${s.p.map((q,i)=>`<tr><td>${i+1}</td><td>${fmtTime(q.t)}</td><td class="result">${fmt(s.pos[i])}</td></tr>`).join('')}</tbody></table></div><h3>${t('intervalsTable')}</h3>`;
       if(s.pos.filter(h=>h<-0.5).length>s.pos.length/2)warn=`<div class="notice error">${t('negHeights')}</div>`;
     }
-    return `<h2>${tm('results')}</h2><p>${tm('resultsIntro')}</p><div class="formula">${tm('formula')}</div>${warn}${pointsTable}<div class="table-wrap"><table><thead><tr><th>${t('interval')}</th><th>${t('times')}</th>${head}</tr></thead><tbody>${ints}</tbody></table></div><div class="question"><strong>💭 ${tm('readThink')}</strong></div><div class="actions"><button class="secondary" data-action="back">${t('back')}</button><button class="primary" data-action="graph">${t('toGraph')}</button></div>`;
+    return `<h2>${tm('results')}</h2><p>${tm('resultsIntro')}</p><div class="formula">${tm('formula')}</div>${warn}${pointsTable}<div class="table-wrap"><table><thead><tr><th>${t('interval')}</th><th>${t('times')}</th>${head}</tr></thead><tbody>${ints}</tbody></table></div><div class="question"><strong>💭 ${tm('readThink')}</strong></div>${navigation({action:'back',label:state.mode==='runner'?'navData':'navRocketData'},null,{action:'graph',label:state.mode==='runner'?'navSpeed':'navPick'})}${toolsView()}`;
   }
-  function pickerView(){return `<h2>${t('pickGraph')}</h2><div class="choice-grid"><button class="big-choice" data-action="pick" data-graph="height"><strong>${t('heightGraph')}</strong><span>${t('heightGraphHelp')}</span></button><button class="big-choice" data-action="pick" data-graph="velocity"><strong>${t('velocityGraph')}</strong><span>${t('velocityGraphHelp')}</span></button></div><div class="actions"><button class="secondary" data-action="back-results">${t('backResults')}</button></div>`;}
-  function graphView(){
+  function accelerations(){
+    const ints=series().ints;
+    const speeds=ints.map(r=>roundSig(r.val));
+    const mids=ints.map(r=>Number(((r.t1+r.t2)/2).toFixed(3)));
+    return ints.slice(1).map((r,i)=>{
+      // Use the displayed time in the division so a student calculator agrees.
+      const dt=Math.round(Number((mids[i+1]-mids[i]).toFixed(3))*100+1e-8)/100;
+      const delta=Number((speeds[i+1]-speeds[i]).toPrecision(12));
+      return {from:speeds[i],to:speeds[i+1],delta,dt,start:mids[i],end:mids[i+1],time:(mids[i]+mids[i+1])/2,value:Number((delta/dt).toFixed(2))};
+    });
+  }
+  function calculationCorrect(v,target){return v!==''&&v!=null&&Number.isFinite(Number(v))&&(Number(v)===0||target===0||Math.sign(Number(v))===Math.sign(target))&&Math.abs(Number(v)-target)<=Math.max(0.1,Math.abs(target)*0.05)+1e-10;}
+  function accelerationComplete(){return accelerations().every((r,i)=>calculationCorrect(state.accelAnswers[i]?.delta,r.delta)&&calculationCorrect(state.accelAnswers[i]?.accel,r.value));}
+  function accelerationView(){
+    const rows=accelerations().map((r,i)=>{
+      const a=state.accelAnswers[i]||{};
+      const field=(name,target,label)=>`<input type="number" step="any" inputmode="decimal" data-field="${name}" data-index="${i}" value="${esc(a[name]??'')}" aria-label="${label}: ${i+1} → ${i+2}" ${state.accelChecked&&!calculationCorrect(a[name],target)?'aria-invalid="true"':''}>${state.accelChecked&&calculationCorrect(a[name],target)?`<span class="status ok">✓ ${t('correct')}</span>`:''}`;
+      return `<tr><td>${i+1} → ${i+2}</td><td><strong>${r.from.toFixed(2)} → ${r.to.toFixed(2)}</strong></td><td><strong>${r.dt.toFixed(2)}</strong></td><td>${field('delta',r.delta,t('changeInput'))}</td><td>${field('accel',r.value,t('accelInput'))}</td></tr>`;
+    }).join('');
+    return `<h2>${t('accelTitle')}</h2><p>${t('accelIntro')}</p><div class="formula">${t('accelFormula')}<div class="muted">${t('accelUnitHelp')}</div></div><p class="notice">${t('accelSign')}</p><div class="table-wrap"><table><thead><tr><th>${t('comparison')}</th><th>${t('speedChange')}</th><th>${t('elapsed')}</th><th>${t('changeInput')}</th><th>${t('accelInput')}</th></tr></thead><tbody>${rows}</tbody></table></div>${state.accelChecked?`<div id="accel-feedback" class="notice ${accelerationComplete()?'success':'error'}" role="status">${t(accelerationComplete()?'accelReady':'accelRetry')}</div>`:''}${navigation({action:'speed-graph',label:'navSpeed'},{action:'check-accel',label:'checkAccel'},{action:'accel-graph',label:'navAccelGraph',disabled:!(state.accelChecked&&accelerationComplete())})}${toolsView()}`;
+  }
+  function pickerView(){return `<h2>${t('pickGraph')}</h2><div class="choice-grid"><button class="big-choice" data-action="pick" data-graph="height"><strong>${t('heightGraph')}</strong><span>${t('heightGraphHelp')}</span></button><button class="big-choice" data-action="pick" data-graph="velocity"><strong>${t('velocityGraph')}</strong><span>${t('velocityGraphHelp')}</span></button></div>${navigation({action:'back-results',label:'navRocketResults'},null,null)}${toolsView()}`;}
+  function graphView(showNavigation=true){
     if(state.mode==='rocket'&&!state.graphType)return pickerView();
     const key=graphKey(),g=G(),tg=targets(),ax=axis(),u=unit();
-    const yTitle=key==='speed'?t('axisSpeed'):key==='height'?t('axisHeight'):t('axisVelocity'),xTitle=key==='height'?t('axisTime'):t('axisInterval');
+    const yTitle=key==='acceleration'?t('axisAcceleration'):key==='speed'?t('axisSpeed'):key==='height'?t('axisHeight'):t('axisVelocity'),xTitle=key==='acceleration'?t('axisAccelTime'):key==='height'?t('axisTime'):t('axisInterval');
     const z=pct(0,ax),ticks=Math.round((ax.hi-ax.lo)/ax.step);
     const bars=tg.map((x,i)=>{
       const v=Number(g.heights[i])||0,box=barBox(v,ax),good=g.checked[i]&&barCorrect(g.heights[i],x.value);
@@ -200,27 +269,27 @@
       const good=barCorrect(g.heights[i],x.value),empty=g.heights[i]==null||g.heights[i]==='';
       const hint=good?'correct':empty?'placeBar':Number(g.heights[i])<x.value?'higher':'lower';
       const mark=g.checked[i]?`<span class="status ${good?'ok':'retry'}">${good?'✓':'↕'} ${t(hint)}</span>`:'';
-      return `<div class="bar-card" style="--color:${colors[i%colors.length]}"><strong>${x.title}</strong>${x.when?`<span class="when">${x.when}</span>`:''}<div class="target-value">${fmt(x.value)} <small>${u}</small></div><label>${t('barHeight')} (${u})<input type="number" inputmode="decimal" min="${ax.lo}" max="${ax.hi}" step="any" data-field="height" data-index="${i}" value="${esc(g.heights[i]??'')}" aria-label="${t('barHeight')} ${i+1}" ${g.checked[i]&&!good?'aria-invalid="true"':''}></label><button class="small" data-action="check-bar" data-index="${i}" aria-label="${t('checkBar')} ${i+1}">${t('checkBar')}</button><div id="bar-status-${i}">${mark}</div></div>`;
+      return `<div class="bar-card" style="--color:${colors[i%colors.length]}"><strong>${x.title}</strong>${x.when?`<span class="when">${x.when}</span>`:''}<div class="target-value">${key==='acceleration'?x.value.toFixed(2):fmt(x.value)} <small>${u}</small></div><button class="small" data-action="check-bar" data-index="${i}" aria-label="${t('checkBar')} ${i+1}">${t('checkBar')}</button><div id="bar-status-${i}">${mark}</div></div>`;
     }).join('');
     const tabs=state.mode==='rocket'?`<div class="graph-tabs"><button class="secondary ${key==='height'?'active':''}" data-action="pick" data-graph="height">${t('heightGraph')}</button><button class="secondary ${key==='velocity'?'active':''}" data-action="pick" data-graph="velocity">${t('velocityGraph')}</button></div>`:'';
     let question='';
-    if(graphComplete()){
+    if(graphComplete()&&key!=='acceleration'){
       const b=best(),ok=g.answerChecked&&Number(g.answer)===b,x=tg[b];
       const answer=key==='height'?fill(t('a_height'),{t:x.label,v:fmt(x.value)}):fill(t(`a_${key}`),{i:b+1,v:fmt(x.value),t1:fmtTime(x.t1),t2:fmtTime(x.t2)});
       question=`<div class="question"><strong>❓ ${t(`q_${key}`)}</strong><div class="row"><select id="answer" class="wide"><option value="">${t('chooseOne')}</option>${tg.map((y,i)=>`<option value="${i}" ${String(g.answer)===String(i)?'selected':''}>${key==='height'?`${y.label} s`:`${y.title} (${y.when})`}</option>`).join('')}</select><button class="small" data-action="check-answer">${t('checkAnswer')}</button></div>${g.answerChecked?`<div class="notice ${ok?'success':'error'}">${ok?answer:t('a_wrong')}</div>`:''}<p><strong>💭 ${t(`think_${key}`)}</strong></p></div>`;
     }
-    const negNote=ax.lo<0?`<p class="muted">${t('negNote')}</p>`:'';
-    return `${tabs}<h2>${t('graph')}</h2><p>${t('graphIntro')}</p><label><strong>${t('scale')} (${u})</strong> <input type="number" id="scale" min="0" step="any" value="${esc(g.scale??niceTop())}"></label><p class="muted">${t('scaleHelp')}</p>${tooSmall()?`<div class="notice error">${t('scaleError')}</div>`:''}${notice()}<div class="graph-workspace"><div class="chart-frame"><div class="y-axis-title">${yTitle}</div><div class="graph-area"><div class="chart" role="group" aria-label="${t('graph')}"><div class="ylabels">${Array.from({length:ticks+1},(_,i)=>`<span style="bottom:${i/ticks*100}%">${Number((ax.lo+i*ax.step).toPrecision(10))}</span>`).join('')}</div><div class="plot" style="--grid-step:${100/ticks}%">${ax.lo<0?`<div class="zero-line" style="bottom:${z}%"></div>`:''}${bars}</div><div class="xlabels">${tg.map(x=>`<span>${x.label}</span>`).join('')}</div></div></div></div><p class="axis-title">${xTitle}</p>${negNote}<p class="muted" id="drag-help">${t('keyboardHelp')}</p><div class="bar-inputs"><h3>${t('cards')}</h3>${cards}</div></div>${question}<div class="actions"><button class="secondary" data-action="back-results">${t('backResults')}</button><button class="primary" data-action="check-graph">${t('checkGraph')}</button><button class="secondary" data-action="print">${t('print')}</button><button class="secondary" data-action="restart">${t('restart')}</button></div>`;
+    const negNote=ax.lo<0?`<p class="muted">${t(key==='acceleration'?'accelNegative':'negNote')}</p>`:'';
+    return `${tabs}<h2>${t(key==='acceleration'?'accelGraphTitle':'graph')}</h2><p>${t(key==='acceleration'?'accelGraphIntro':'graphIntro')}</p><label><strong>${t('scale')} (${u})</strong> <input type="number" id="scale" min="0" step="any" value="${esc(g.scale??niceTop())}"></label><p class="muted">${t('scaleHelp')}</p>${tooSmall()?`<div class="notice error">${t('scaleError')}</div>`:''}${notice()}<div class="graph-workspace"><div class="chart-frame"><div class="y-axis-title">${yTitle}</div><div class="graph-area"><div class="chart" role="group" aria-label="${t('graph')}"><div class="ylabels">${Array.from({length:ticks+1},(_,i)=>`<span style="bottom:${i/ticks*100}%">${Number((ax.lo+i*ax.step).toPrecision(10))}</span>`).join('')}</div><div class="plot" style="--grid-step:${100/ticks}%">${ax.lo<0?`<div class="zero-line" style="bottom:${z}%"></div>`:''}${bars}</div><div class="xlabels">${tg.map(x=>`<span>${x.label}</span>`).join('')}</div></div></div></div><p class="axis-title">${xTitle}</p>${negNote}<p class="muted" id="drag-help">${t('keyboardHelp')}</p><div class="bar-inputs"><h3>${t(key==='acceleration'?'accelCards':'cards')}</h3>${cards}</div></div>${question}${key==='acceleration'&&graphComplete()?`<div class="question"><strong>${t('accelThink')}</strong></div>`:''}${showNavigation?navigation({action:key==='acceleration'?'accel':'back-results',label:key==='acceleration'?'navAccel':state.mode==='runner'?'navResults':'navRocketResults'},{action:'check-graph',label:'checkGraph'},key==='speed'?{action:'accel',label:'navAccel'}:{action:'finish',label:'finish',disabled:!graphComplete()}):''}${showNavigation&&key!=='speed'&&!graphComplete()?`<p class="muted">${t('finishHint')}</p>`:''}${showNavigation?toolsView():''}`;
   }
   function setBarHeight(index,value){
     const g=G(),ax=axis();
-    g.heights[index]=String(Math.max(ax.lo,Math.min(ax.hi,roundSig(value))));
+    g.heights[index]=String(Math.max(ax.lo,Math.min(ax.hi,graphKey()==='acceleration'?Number(value.toFixed(2)):roundSig(value))));
     g.checked[index]=false;g.answerChecked=false;state.message='';
     const h=Number(g.heights[index]),box=barBox(h,ax),bar=$(`#bar-${index}`),handle=$(`#handle-${index}`);
     bar.style.bottom=`${box.bottom}%`;bar.style.height=`${box.height}%`;bar.classList.toggle('neg',box.neg);bar.classList.remove('good');
     handle.setAttribute('aria-valuenow',h);handle.setAttribute('aria-valuetext',`${fmt(h)} ${unit()}`);
-    const input=$(`[data-field="height"][data-index="${index}"]`);input.value=g.heights[index];input.removeAttribute('aria-invalid');
     $(`#bar-status-${index}`).textContent='';
+    const finish=$('[data-action="finish"]');if(finish)finish.disabled=true;
     $('#app [role="status"]')?.remove();
   }
   let drag=null;
@@ -259,40 +328,52 @@
     const must=state.mode==='rocket'?all.reduce((b,q,i)=>Number(q.v)>Number(all[b].v)?i:b,0):null;
     return {rows:pick(all.length,count,must).map(i=>all[i]),total:all.length};
   }
-  function resetGraphs(){state.g={};state.graphType=null;}
+  function resetGraphs(){state.finished=false;state.restartPending=false;state.resultsKey=null;state.g={};state.graphType=null;state.accelAnswers=[];state.accelChecked=false;}
   const demos={
     runner:[[0,0],[1.1,3],[1.8,6],[2.4,9],[2.95,12],[3.48,15],[4,18],[4.53,21],[5.08,24],[5.66,27]],
     big:Array.from({length:11},(_,i)=>[i,2.5*i*i]),
     water:Array.from({length:11},(_,i)=>{const s=Number((i*0.4).toFixed(1));return [s,Number(Math.max(0,20*s-4.9*s*s).toFixed(2))];})
   };
   $('#language').addEventListener('click',()=>{hideToast();state.lang=state.lang==='es'?'en':'es';state.message='';render();});
-  $('#app').addEventListener('input',e=>{if(e.target.id==='student-name'){state.name=e.target.value.slice(0,32);return;}const field=e.target.dataset.field,index=Number(e.target.dataset.index);if(field==='t'||field==='v')state.rows[index][field]=e.target.value;else if(field==='height'){const g=G();g.heights[index]=e.target.value;g.checked[index]=false;g.answerChecked=false;}});
+  $('#app').addEventListener('input',e=>{if(e.target.id==='student-name'){state.name=e.target.value.slice(0,32);return;}const field=e.target.dataset.field,index=Number(e.target.dataset.index);if(field==='delta'||field==='accel'){
+      state.accelAnswers[index]??={};state.accelAnswers[index][field]=e.target.value;state.accelChecked=false;
+      e.target.removeAttribute('aria-invalid');const next=$('[data-action="accel-graph"]');if(next)next.disabled=true;
+      $('#accel-feedback')?.remove();return;
+    }if(field==='t'||field==='v')state.rows[index][field]=e.target.value;});
   $('#app').addEventListener('change',async e=>{
     if(e.target.id==='csv'&&e.target.files?.[0]){try{const {rows,total}=parseCSV(await e.target.files[0].text(),Number($('#sample-count').value));state.rows=rows;resetGraphs();setMessage('imported','success',{used:rows.length,total});}catch(err){const [mn,mx]=LIMITS[state.mode];if(err.message==='noY')setMessage('noY');else if(err.message==='count')setMessage('needPoints','error',{min:mn,max:mx});else setMessage('fileError');}}
     if(e.target.id==='scale'){const n=Number(e.target.value);G().scale=n>0?n:null;state.message='';render();}
     if(e.target.id==='answer'){const g=G();g.answer=e.target.value;g.answerChecked=false;render();}
-    if(e.target.dataset.field==='height'){state.message='';render();}
   });
-  $('#app').addEventListener('click',e=>{const button=e.target.closest('button[data-action]');if(!button)return;const action=button.dataset.action;
-    if(action==='mode'){if(state.mode!==button.dataset.mode){state.mode=button.dataset.mode;state.rows=blankRows();resetGraphs();}state.stage=1;state.message='';render();}
+  $('#app').addEventListener('click',e=>{const button=e.target.closest('button[data-action]');if(!button)return;const action=button.dataset.action,previousStage=state.stage,wasFinished=state.finished;
+    if(action==='finish'&&graphComplete()){state.finished=true;state.message='';render();}
+    else if(action==='review-graph'){state.finished=false;render();}
+    else if(action==='restart'){state.restartPending=true;render();}
+    else if(action==='cancel-restart'){state.restartPending=false;render();}
+    else if(action==='accel'){state.stage=4;state.message='';render();}
+    else if(action==='speed-graph'){state.stage=3;state.message='';render();}
+    else if(action==='check-accel'){state.accelChecked=true;render();encourage(accelerationComplete());return;}
+    else if(action==='accel-graph'&&accelerationComplete()){state.stage=5;state.message='';const g=G();if(g.scale==null)g.scale=niceTop();render();}
+    else if(action==='mode'){if(state.mode!==button.dataset.mode){state.mode=button.dataset.mode;state.rows=blankRows();resetGraphs();}state.stage=1;state.message='';render();}
     else if(action==='back-choose'){state.stage=0;state.message='';render();}
     else if(action==='demo'){state.rows=demos[button.dataset.demo].map(([a,b])=>({t:String(a),v:String(b)}));resetGraphs();state.message='';render();}
     else if(action==='add'&&state.rows.length<LIMITS[state.mode][1]){state.rows.push({t:'',v:''});state.message='';render();}
     else if(action==='remove'&&state.rows.length>LIMITS[state.mode][0]){state.rows.splice(Number(button.dataset.index),1);state.message='';render();}
-    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx});}else{resetGraphs();state.stage=2;state.message='';render();}}
+    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx});}else{const key=JSON.stringify([state.mode,points()]);if(state.resultsKey!==key){resetGraphs();state.resultsKey=key;}state.stage=2;state.message='';render();}}
     else if(action==='back'){state.stage=1;state.message='';render();}
     else if(action==='graph'){state.stage=3;state.message='';if(state.mode==='runner'){const g=G();if(g.scale==null)g.scale=niceTop();}render();}
     else if(action==='pick'){state.graphType=button.dataset.graph;const g=G();if(g.scale==null)g.scale=niceTop();state.message='';render();}
     else if(action==='back-results'){state.stage=2;state.message='';render();}
-    else if(action==='check-bar'){G().checked[Number(button.dataset.index)]=true;if(graphComplete())setMessage('graphGood','success');else{state.message='';render();}}
-    else if(action==='check-graph'){const g=G();g.checked=targets().map(()=>true);const good=graphComplete();setMessage(good?'graphGood':'graphTry',good?'success':'error');}
+    else if(action==='check-bar'){G().checked[Number(button.dataset.index)]=true;if(graphComplete())setMessage(graphKey()==='acceleration'?'accelGraphGood':'graphGood','success');else{state.message='';render();}}
+    else if(action==='check-graph'){const g=G();g.checked=targets().map(()=>true);const good=graphComplete();setMessage(good?(graphKey()==='acceleration'?'accelGraphGood':'graphGood'):'graphTry',good?'success':'error');}
     else if(action==='check-answer'){const g=G();g.answerChecked=true;state.message='';render();}
     else if(action==='print')window.print();
-    else if(action==='restart'){state.stage=0;state.mode=null;state.rows=blankRows();resetGraphs();state.message='';render();}
+    else if(action==='confirm-restart'&&state.restartPending){state.stage=0;state.mode=null;state.rows=blankRows();resetGraphs();state.message='';render();}
     if(action==='check-graph')encourage(state.kind==='success');
     else if(action==='check-bar'){const i=Number(button.dataset.index),x=targets()[i],h=G().heights[i],good=barCorrect(h,x.value),empty=h==null||h==='';encourage(good,good?'':t(empty?'placeBar':Number(h)<x.value?'higher':'lower'));}
     else if(action==='check-answer'){const g=G();encourage(g.answer!==''&&Number(g.answer)===best());}
     else hideToast();
+    if(state.stage!==previousStage||state.finished!==wasFinished){const heading=$('#app h2');heading?.setAttribute('tabindex','-1');heading?.focus();heading?.scrollIntoView?.({block:'start'});}
   });
   render();
 })();
