@@ -12,6 +12,7 @@ simulation, served at `…/science-simulations/<folder>/`.
 | `conductivity/` | Saltwater Conductivity Lab |
 | `yeast/` | Yeast Respiration |
 | `rutherford/` | Rutherford's Gold Foil Experiment |
+| `pressure/` | Crack the Pressure Code (`inquiry.html`, linked from the main page) and the free Deep Dive Pressure Lab (`index.html`) |
 
 **This repo is the published copy, not the original.** The originals live in the
 teaching folders. To update one, copy its `index.html` (and `assets/`, if it has

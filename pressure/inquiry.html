@@ -1,0 +1,2172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crack the Pressure Code</title>
+<!--
+  Deep Dive · Crack the Pressure Code (Cesar, 2026-11-03). Grade 10 inquiry activity.
+  One offline file, no network, no libraries. Self-paced: 7 short missions in which
+  students discover P = P_air + rho g h without being told it.
+  Progress is kept in sessionStorage only (it survives an accidental reload, and is
+  wiped when the tab is closed). No names are asked for.
+-->
+<style>
+  :root {
+    --bg: #04111f; --card: #0f2542; --card2: #12305a; --line: #1f3d63;
+    --ink: #e6f1ff; --muted: #8fb0d4; --accent: #22d3ee; --accent-soft: rgba(34,211,238,.14);
+    --gold: #facc15; --good: #4ade80; --bad: #f87171; --violet: #a78bfa; --orange: #fb923c;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  button, select, input { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 430px; height: 100vh; }
+  .stage { position: relative; overflow: hidden; min-height: 0; user-select: none; -webkit-user-select: none; }
+  #scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .glass { background: rgba(4,17,31,.6); border: 1px solid rgba(148,197,255,.22); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+
+  /* HUD */
+  .hud-top { position: absolute; top: 12px; left: 76px; right: 240px; display: flex; gap: 10px; align-items: center; pointer-events: none; }
+  .chip { padding: 8px 14px; font-weight: 700; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .instruments { position: absolute; top: 12px; right: 12px; width: 214px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .readout { width: 100%; display: flex; align-items: baseline; gap: 6px; background: rgba(0,0,0,.35); border-radius: 10px; padding: 6px 10px; }
+  .readout label { font-size: .62rem; letter-spacing: .1em; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  .digits { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 700;
+    color: #67e8f9; text-shadow: 0 0 12px rgba(34,211,238,.6); margin-left: auto; }
+  .readout .u { color: var(--muted); font-weight: 700; font-size: .85rem; min-width: 30px; }
+  .readout.p .digits { color: #fde68a; text-shadow: 0 0 12px rgba(250,204,21,.55); }
+  #dial { width: 150px; height: 150px; display: block; }
+  .zone { width: 100%; text-align: center; font-size: .78rem; font-weight: 800; padding: 6px 8px; border-radius: 10px; background: rgba(0,0,0,.35); }
+  .hull { width: 100%; height: 8px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .hull i { display: block; height: 100%; width: 0; background: var(--good); transition: background .3s; }
+
+  .controls { position: absolute; left: 78px; bottom: 16px; display: grid; grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 54px); gap: 6px; }
+  .ctl { border-radius: 50%; border: 2px solid rgba(103,232,249,.6); background: rgba(4,17,31,.6); font-size: 1.2rem;
+    cursor: pointer; color: #a5f3fc; box-shadow: 0 0 18px rgba(34,211,238,.2); touch-action: none; }
+  .ctl.held { background: var(--accent); color: #04111f; }
+  #upBtn { grid-column: 2; grid-row: 1; } #leftBtn { grid-column: 1; grid-row: 2; }
+  #downBtn { grid-column: 2; grid-row: 2; } #rightBtn { grid-column: 3; grid-row: 2; }
+  .tankmode #leftBtn, .tankmode #rightBtn { visibility: hidden; }
+  .record { position: absolute; right: 18px; bottom: 18px; border: 0; border-radius: 999px; padding: 16px 24px; font-weight: 800;
+    font-size: 1.05rem; cursor: pointer; color: #1a1300; background: linear-gradient(135deg, #fde047, #f59e0b);
+    box-shadow: 0 6px 24px rgba(245,158,11,.45); }
+  .record:active { transform: scale(.97); }
+  kbd { font-family: ui-monospace, Menlo, monospace; font-size: .75em; padding: 1px 6px; border-radius: 5px; background: rgba(0,0,0,.2); border: 1px solid rgba(127,127,127,.4); }
+  .toast { position: absolute; left: 50%; top: 70px; transform: translate(-50%, -10px); opacity: 0; transition: opacity .25s, transform .25s;
+    padding: 10px 18px; font-weight: 700; pointer-events: none; max-width: min(70%, 520px); text-align: center; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.good { border-color: rgba(74,222,128,.7); color: #bbf7d0; }
+  .toast.warn { border-color: rgba(251,191,36,.8); color: #fde68a; }
+  .toast.danger { border-color: rgba(248,113,113,.9); color: #fecaca; background: rgba(69,10,10,.75); }
+  .timer { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); padding: 8px 20px; font-size: 1.6rem; font-weight: 800;
+    font-family: ui-monospace, Menlo, monospace; color: #fde68a; }
+  .timer.low { color: #fca5a5; animation: pulse 1s infinite; }
+  .signal { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); padding: 6px 14px; font-weight: 800; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .tankbar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 8px; flex-wrap: wrap; justify-content: center; max-width: 46%; }
+  .tankbar button { border: 1px solid var(--line); background: var(--card2); border-radius: 10px; padding: 8px 10px; cursor: pointer; font-weight: 700; font-size: .82rem; }
+  .tankbar button.on { background: var(--accent); color: #04111f; border-color: var(--accent); }
+  .tankbar button .ok { color: var(--good); }
+
+  /* Panel */
+  .panel { overflow-y: auto; background: linear-gradient(180deg, #0a1b30, #071426); border-left: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: .76rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .mmap { display: flex; gap: 6px; justify-content: space-between; }
+  .mbtn { flex: 1; aspect-ratio: 1; max-width: 50px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); cursor: pointer;
+    font-size: 1.2rem; position: relative; padding: 0; }
+  .mbtn small { position: absolute; bottom: 1px; right: 4px; font-size: .62rem; font-weight: 800; color: var(--muted); }
+  .mbtn.done { border-color: var(--good); background: rgba(74,222,128,.12); }
+  .mbtn.cur { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .mbtn:disabled { opacity: .35; cursor: not-allowed; filter: grayscale(1); }
+  .mtitle { margin-top: 10px; font-weight: 800; font-size: 1.1rem; }
+  .board { border-color: rgba(250,204,21,.45); background: linear-gradient(180deg, rgba(250,204,21,.08), var(--card)); }
+  .board h2 { color: var(--gold); }
+  .formula { font-size: 1.15rem; font-weight: 800; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; padding: 6px 0; }
+  .slot { min-width: 44px; padding: 6px 10px; border-radius: 10px; border: 2px dashed rgba(250,204,21,.5); color: rgba(250,204,21,.7); text-align: center; }
+  .slot.on { border-style: solid; border-color: var(--gold); background: rgba(250,204,21,.15); color: #fff; animation: pop .5s; }
+  .slot.word { font-size: .72rem; padding: 6px 7px; min-width: 0; }
+  .formula { gap: 4px; }
+  .board.cracked .formula { font-size: 1.5rem; }
+  @keyframes pop { 0% { transform: scale(.6); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  .clues { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .clue { font-size: .8rem; color: #e2e8f0; background: rgba(0,0,0,.25); border-radius: 8px; padding: 5px 8px; }
+  .stephead { display: flex; align-items: center; gap: 10px; font-size: .74rem; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
+  .bar { flex: 1; height: 6px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+  .txt { font-size: .95rem; line-height: 1.5; }
+  .txt p { margin: 0 0 8px; } .txt ul { margin: 0 0 8px; padding-left: 20px; }
+  .tag { display: inline-block; font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); margin-bottom: 6px; }
+  .tag.pred { background: rgba(167,139,250,.18); color: var(--violet); }
+  .tag.task { background: rgba(250,204,21,.15); color: var(--gold); }
+  .q { font-size: 1.16rem; line-height: 1.45; font-weight: 700; margin-bottom: 12px; }
+  .look { margin: 4px 0 12px; background: rgba(0,0,0,.25); border: 1px solid rgba(250,204,21,.55); border-radius: 10px; padding: 8px; }
+  .lookhead { font-size: .76rem; font-weight: 800; color: var(--gold); margin-bottom: 6px; letter-spacing: .04em; }
+  .look canvas { width: 100%; height: 200px; display: block; }
+  .look .tablewrap { max-height: 190px; margin: 0; }
+  .hints { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .hintbox { background: rgba(250,204,21,.1); border: 1px solid rgba(250,204,21,.45); border-radius: 10px; padding: 8px 10px; font-size: .92rem; line-height: 1.45; }
+  .hintbtn { margin-top: 8px; }
+  .part { display: inline-block; font-size: .74rem; font-weight: 800; letter-spacing: .06em; padding: 4px 10px; border-radius: 999px; background: rgba(251,146,60,.18); color: var(--orange); margin-bottom: 8px; }
+  .plan { margin: 6px 0 10px; padding-left: 22px; } .plan li { margin: 5px 0; }
+  .who { float: right; color: var(--ink); text-transform: none; letter-spacing: 0; font-size: .8rem; }
+  .opts { display: flex; flex-direction: column; gap: 6px; }
+  .opt { display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--line); background: var(--card2); border-radius: 10px; padding: 9px 12px; cursor: pointer; font-size: .9rem; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); }
+  .opt svg { flex: none; }
+  .opt.sel { border-color: var(--violet); background: rgba(167,139,250,.18); }
+  .opt.right { border-color: var(--good); background: rgba(74,222,128,.15); }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); opacity: .6; }
+  .fb { margin-top: 10px; font-size: .9rem; line-height: 1.45; }
+  .fb .good, .fb .bad, .fb .info { border-radius: 10px; padding: 10px 12px; }
+  .fb .good { background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.5); }
+  .fb .bad { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.5); }
+  .fb .info { background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.5); }
+  .eqbox { margin: 8px 0; padding: 8px; text-align: center; font-weight: 800; font-size: 1.05rem; border-radius: 10px; background: rgba(250,204,21,.12); border: 1px solid rgba(250,204,21,.4); }
+  .numrow { display: flex; gap: 8px; align-items: center; }
+  .numrow input { flex: 1; min-width: 0; background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; font-size: 1rem; text-align: right; }
+  .prog { margin-top: 8px; font-family: ui-monospace, Menlo, monospace; font-size: .86rem; color: #fde68a; background: rgba(0,0,0,.25); border-radius: 8px; padding: 6px 10px; }
+  .btn { border: 1px solid var(--line); background: var(--card2); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: .88rem; font-weight: 700; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #04111f; border-color: var(--accent); }
+  .btn.big { width: 100%; margin-top: 10px; padding: 11px; font-size: 1rem; }
+  .builder .slots { display: flex; gap: 6px; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; margin: 10px 0; flex-wrap: wrap; }
+  .builder .bslot { min-width: 54px; min-height: 44px; border: 2px dashed var(--muted); border-radius: 10px; background: rgba(0,0,0,.25); cursor: pointer; font-weight: 800; }
+  .builder .bslot.filled { border-style: solid; border-color: var(--accent); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tile { border: 1px solid var(--line); background: var(--card2); border-radius: 10px; padding: 8px 4px; cursor: pointer; text-align: center; font-size: .8rem; }
+  .tile b { display: block; font-size: 1.15rem; }
+  .tile:disabled { opacity: .3; cursor: default; }
+  .tablewrap { max-height: 220px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  th, td { padding: 6px 9px; text-align: right; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--card2); font-size: .72rem; color: var(--muted); }
+  th:first-child, td:first-child { text-align: left; }
+  td.del button { border: 0; background: none; color: var(--muted); cursor: pointer; }
+  tr.new td { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(250,204,21,.35); } to { background: transparent; } }
+  .empty { padding: 16px; text-align: center !important; color: var(--muted); }
+  #graph { width: 100%; height: 230px; display: block; background: rgba(0,0,0,.25); border-radius: 10px; }
+  .foot { display: flex; gap: 8px; flex-wrap: wrap; }
+  .foot a { color: var(--accent); font-size: .85rem; align-self: center; margin-left: auto; }
+
+  /* Notebook */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; z-index: 10; }
+  .modal[hidden] { display: none; }
+  .sheet { background: #fff; color: #1e293b; max-width: 760px; width: 100%; border-radius: 14px; padding: 24px 28px; }
+  .sheet h1 { margin: 0 0 4px; font-size: 1.5rem; } .sheet h3 { margin: 18px 0 6px; color: #0e7490; }
+  .sheet .meta { color: #64748b; font-size: .9rem; }
+  .sheet .qa { margin: 4px 0; font-size: .92rem; } .sheet .qa i { color: #475569; }
+  .sheet table { font-size: .85rem; margin: 6px 0; max-width: 460px; }
+  .sheet th { background: #f1f5f9; color: #334155; position: static; } .sheet td, .sheet th { border-bottom: 1px solid #e2e8f0; }
+  .sheet .clue { background: #fef9c3; color: #1e293b; }
+  .sheet .lines { border-bottom: 1px solid #94a3b8; height: 28px; }
+  .sheetbtns { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+  .sheetbtns .btn { color: #1e293b; background: #e2e8f0; border-color: #cbd5e1; }
+
+  .welcome label { display: block; margin: 12px 0; font-weight: 700; }
+  .welcome input { display: block; width: 100%; margin-top: 4px; padding: 10px 12px; font-size: 1.05rem; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #1e293b; }
+  .welcome .err { color: #dc2626; font-weight: 700; min-height: 1.2em; }
+  .welcome .btn.primary { color: #04111f; }
+  @media print {
+    @page { margin: 14mm; }
+    html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+    .app, #welcome { display: none !important; }
+    #notebook { position: static !important; display: block !important; background: #fff !important; padding: 0 !important; overflow: visible !important; }
+    #notebook .sheet { max-width: none; width: auto; border-radius: 0; padding: 0; }
+    .sheetbtns { display: none !important; }
+    .sheet h3 { break-after: avoid; } .sheet table, .sheet .qa { break-inside: avoid; }
+    .sheet .clue { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .stage { height: 70vh; min-height: 460px; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .hud-top { left: 66px; right: 170px; top: 8px; }
+    .instruments { width: 156px; top: 8px; right: 8px; padding: 8px; gap: 6px; }
+    #dial { width: 104px; height: 104px; }
+    .digits { font-size: 1.1rem; }
+    .readout label { display: none; }
+    .controls { left: 68px; bottom: 10px; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); }
+    .record { right: 10px; bottom: 12px; padding: 12px 16px; font-size: .9rem; }
+    .record kbd { display: none; }
+    .tankbar { bottom: 120px; max-width: 70%; }
+    .toast { top: auto; bottom: 130px; max-width: 80%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="scene" aria-label="Underwater game scene"></canvas>
+    <div class="hud-top"><div class="chip glass" id="chip"></div></div>
+
+    <div class="instruments glass">
+      <div class="readout"><label>DEPTH</label><span class="digits" id="depthOut">0.0</span><span class="u">m</span></div>
+      <canvas id="dial" aria-hidden="true"></canvas>
+      <div class="readout p"><label id="pLabel">PRESSURE</label><span class="digits" id="pOut">0</span><span class="u">kPa</span></div>
+      <div class="zone" id="zone"></div>
+      <div class="hull" id="hullBar" hidden><i></i></div>
+    </div>
+
+    <div class="controls" id="controls">
+      <button type="button" class="ctl" id="upBtn" aria-label="Up">▲</button>
+      <button type="button" class="ctl" id="leftBtn" aria-label="Left">◀</button>
+      <button type="button" class="ctl" id="downBtn" aria-label="Down">▼</button>
+      <button type="button" class="ctl" id="rightBtn" aria-label="Right">▶</button>
+    </div>
+    <div class="tankbar glass" id="tankbar" hidden></div>
+    <button type="button" class="record" id="recordBtn">📍 Record <kbd>Space</kbd></button>
+    <div class="timer glass" id="timer" hidden></div>
+    <div class="signal glass" id="signal" hidden></div>
+    <div class="toast glass" id="toast" role="status"></div>
+  </div>
+
+  <aside class="panel">
+    <section class="card">
+      <h2>Missions <span class="who" id="who"></span></h2>
+      <div class="mmap" id="mmap"></div>
+      <div class="mtitle" id="mtitle"></div>
+    </section>
+    <section class="card board" id="board"></section>
+    <section class="card" id="stepCard" aria-live="polite"></section>
+    <section class="card" id="dataCard" hidden>
+      <h2 id="dataTitle">Data</h2>
+      <div class="tablewrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+      <canvas id="graph"></canvas>
+    </section>
+    <div class="foot">
+      <button type="button" class="btn" id="nbBtn">📓 My lab notebook</button>
+      <a href="index.html" target="_blank" rel="noopener">Free lab ↗</a>
+    </div>
+  </aside>
+</div>
+
+<div class="modal" id="welcome" hidden>
+  <div class="sheet welcome">
+    <h1>🤿 Welcome, diver!</h1>
+    <p>Before you start, type your name. It will appear in your lab notebook.</p>
+    <label>Your name <input id="nameIn" autocomplete="off" maxlength="40"></label>
+    <label>Class (optional) <input id="classIn" autocomplete="off" maxlength="20"></label>
+    <div class="err" id="nameErr"></div>
+    <button type="button" class="btn primary big" id="nameGo">Start the missions ▶</button>
+    <p class="meta">Your name stays only in this browser tab. It is deleted when you close the tab.</p>
+  </div>
+</div>
+
+<div class="modal" id="notebook" hidden>
+  <div class="sheet">
+    <div class="sheetbtns"><button type="button" class="btn" id="printBtn">🖨 Print / save as PDF</button><button type="button" class="btn" id="nbClose">Close</button></div>
+    <div id="nbBody"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Physics and settings
+   ===================================================================== */
+const OCEAN = { rho: 1025, g: 9.81, patm: 101.3 };
+const LIQUIDS = [
+  { name: "Oil", rho: 800, col: "#e8b923" },
+  { name: "Water", rho: 1000, col: "#2a9fd6" },
+  { name: "Salt brine", rho: 1200, col: "#14b8a6" },
+  { name: "Honey", rho: 1400, col: "#c2620c" },
+];
+const PLANETS = [
+  { name: "Moon", g: 1.62, patm: 0, sky: ["#000000", "#1e1b2e"], ground: "#9ca3af", stars: true },
+  { name: "Mars", g: 3.71, patm: 0.6, sky: ["#7c2d12", "#fdba74"], ground: "#b45309" },
+  { name: "Earth", g: 9.81, patm: 101.3, sky: ["#38bdf8", "#e0f2fe"], ground: "#4d7c0f" },
+  { name: "Super-Earth", g: 19.62, patm: 150, sky: ["#4c1d95", "#f0abfc"], ground: "#57534e", madeUp: true },
+];
+const HUMAN_LIMIT = 60;       // m: hard stop for the human diver
+const SPEED = { diver: 5, probe: 3, drone: 45 };
+
+// Human danger zones (depth in m)
+const ZONES = [
+  { to: 18, col: "#4ade80", name: "🟢 Safe zone for beginner divers" },
+  { to: 30, col: "#facc15", name: "🟡 Advanced divers only" },
+  { to: 40, col: "#fb923c", name: "🟠 Deep: risk of nitrogen narcosis" },
+  { to: 60.01, col: "#ef4444", name: "🔴 DANGER: deeper than the 40 m limit" },
+];
+const ZONE_MSG = [
+  "",
+  "🟡 Below 18 m: only advanced divers go this deep.",
+  "🟠 Below 30 m: the high pressure makes nitrogen in the air act like a drug. Divers get confused (nitrogen narcosis).",
+  "🔴 DANGER! Below 40 m, the limit for divers breathing normal air. Go back up!",
+];
+const OCEAN_ZONES = [
+  { to: 200, name: "☀️ Sunlight zone" }, { to: 1000, name: "🌒 Twilight zone" }, { to: 1e9, name: "🌑 Midnight zone" },
+];
+
+/* Ocean floor profile [x (m east), depth (m)]. Negative depth = dry beach. */
+const BED = [[-80, -6], [-30, -3], [-12, -0.8], [-4, 2], [6, 5], [20, 7], [34, 9], [46, 14], [58, 22], [70, 23.5],
+  [90, 23], [110, 24], [140, 24], [175, 24.5], [188, 34], [200, 45], [230, 48], [262, 49], [268, 120], [276, 420],
+  [290, 900], [305, 1300], [325, 1500], [395, 1500], [410, 1250], [425, 700], [436, 200], [442, 55], [470, 50], [560, 48]];
+const ROCKS = [
+  // cave roof with a pillar on its east side
+  [[86, 11.5], [90, 8.5], [100, 6.5], [115, 6], [126, 7], [131, 10], [133, 25], [121, 25], [122, 15], [112, 13.8], [98, 13.3], [88, 12.6]],
+  // rock tower with a narrow chimney (x 157–161) leading down to a small chamber
+  [[143, 25], [145, 9], [149, 4.5], [157, 4], [157, 15], [151, 15], [151, 21], [159, 21], [159, 25]],
+  [[161, 4], [168, 4.5], [172, 9], [175, 25], [159, 25], [159, 21], [167, 21], [167, 15], [161, 15]],
+];
+const STATIONS = [
+  { k: "A", x: 72, d: 18, name: "open water" },
+  { k: "B", x: 105, d: 18, name: "cave" },
+  { k: "C", x: 159, d: 18, name: "chimney" },
+];
+const X_MIN = -12, X_MAX = 520;
+
+function bed(x) {
+  if (x <= BED[0][0]) return BED[0][1];
+  for (let i = 1; i < BED.length; i++) {
+    const [x1, d1] = BED[i];
+    if (x <= x1) { const [x0, d0] = BED[i - 1]; return d0 + (d1 - d0) * (x - x0) / (x1 - x0); }
+  }
+  return BED[BED.length - 1][1];
+}
+function inPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/* =====================================================================
+   Missions
+   ===================================================================== */
+const SHAPES = {
+  line: "M6 32 L56 6", curveUp: "M6 34 Q44 33 56 4", curveFlat: "M6 34 Q12 6 56 6", flat: "M6 20 L56 20",
+};
+const shapeOpts = [
+  { label: "A straight line going up", svg: "line" }, { label: "A curve that gets steeper", svg: "curveUp" },
+  { label: "A curve that levels off", svg: "curveFlat" }, { label: "A flat line", svg: "flat" },
+];
+const SEA_RGH10 = OCEAN.rho * OCEAN.g * 10;   // 100 552.5 Pa
+
+const MISSIONS = [
+  { id: 1, icon: "🤿", title: "Dive in!", map: "ocean", vehicle: "diver", start: [62, 0], record: false, clue: "air",
+    steps: [
+      { type: "info", html: `<p>Welcome to the <b>Deep Ocean Research Team</b>! 🌊</p>
+        <p>Your diver carries a <b>pressure gauge</b>. It works, but the <b>formula</b> that explains it has been lost.
+        Your job: <b>crack the pressure code</b> 🔐 (look at the yellow board above).</p>
+        <p><b>Controls:</b> arrow keys or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to swim. Hold <kbd>Shift</kbd> to move slowly.
+        You can also click or tap where you want to go.</p>` },
+      { type: "choice", id: "m1pred", pred: true, q: "What do you think will happen to the pressure as you swim deeper?",
+        opts: ["It will go up", "It will go down", "It will stay the same", "I'm not sure"] },
+      { type: "task", text: "Swim down to a depth of at least <b>10 m</b>. Watch the pressure gauge.",
+        done: () => S.pos.d >= 10, progress: () => `Depth: ${fmtD(S.pos.d)} m · Pressure: ${pNowTxt()} kPa` },
+      { type: "task", text: "Now swim back up to the <b>surface</b> (0 m). Watch the gauge again.",
+        done: () => S.pos.d <= 0.05, progress: () => `Depth: ${fmtD(S.pos.d)} m · Pressure: ${pNowTxt()} kPa` },
+      { type: "choice", id: "m1obs", q: "What happened to the pressure?",
+        opts: ["It went up as I went down, and went back down as I came up", "It went up and stayed high", "It did not change"],
+        correct: 0, hint: "Swim down and up again and watch the yellow number.",
+        explain: () => `Right: <b>deeper means more pressure</b>. ${echo("m1pred")}` },
+      { type: "choice", id: "m1air", q: "At the surface (0 m) the gauge shows about <b>101 kPa</b>, not zero! What is pushing on you there?",
+        opts: ["The air above us (the atmosphere)", "The boat", "Nothing, the gauge is broken", "The heat of the Sun"],
+        correct: 0, hint: "Think: what is above the water?",
+        explain: `Yes! Air has weight. The whole atmosphere above us pushes with about <b>101 kPa</b> at sea level.
+          This is called <b>air pressure</b>, P<sub>air</sub>. First piece of the code found! 🔐` },
+    ] },
+
+  { id: 2, icon: "📏", title: "How deep, how much?", map: "ocean", vehicle: "diver", start: [214, 0], record: true, data: "depth", clue: "h",
+    steps: [
+      { type: "info", html: `<p>Now let's measure <b>how</b> the pressure changes with depth.</p>
+        <p>First you will make a <b>prediction</b>. Then you will swim to different depths and record the pressure at each one.</p>
+        <p>⚠️ Stay above <b>40 m</b>. Deeper is dangerous for a diver breathing air.</p>` },
+      { type: "choice", id: "m2pred", pred: true, q: "What shape will the graph of pressure (up) against depth (across) have?", opts: shapeOpts },
+      { type: "task", rec: true, goal: 10, text: "Now record your data. Swim to a depth and press <b>📍 Record</b> (or <kbd>Space</kbd>). Do this at <b>10 different depths</b>, spread from near 0 m down to <b>at least 30 m</b>.<br><small>Your readings appear in the table and graph below. The next step opens by itself when you have 10.</small>",
+        done: () => S.data.length >= 10 && span() >= 30,
+        progress: () => `${S.data.length}/10 readings · deepest so far: ${S.data.length ? S.data[S.data.length - 1].h.toFixed(1) : "–"} m${S.data.length >= 10 && span() < 30 ? " · ⚠️ now go down to at least 30 m" : ""}`,
+        onDone: () => { S.flags.fit = true; drawGraph(); } },
+      { type: "choice", id: "m2shape", look: "graph", q: "Look at your graph. What shape is it?", opts: shapeOpts, correct: 0,
+        hint: "Look at the dots. Could you join them with a ruler?",
+        explain: () => `Yes, a <b>straight line</b>. ${echo("m2pred")} A straight line means the pressure goes up by the <b>same amount</b> for every metre.` },
+      { type: "number", id: "m2per10", look: "table", q: "Look at your data table. For every <b>10 m</b> deeper, how much does the pressure go up?", unit: "kPa",
+        check: v => v >= 94 && v <= 107,
+        hints: ["Choose two readings in your table that are about 10 m apart (for example 10 m and 20 m). If you don't have them, dive there and read the gauge.", "Subtract: (pressure at the deeper one) − (pressure at the shallower one)."],
+        explain: "Correct: about <b>100 kPa more for every 10 m</b>, which is about 10 kPa per metre in sea water." },
+      { type: "choice", id: "m2double", look: "table", q: "Your friend says: “At 20 m the pressure is <b>double</b> the pressure at 10 m.” Look at your data table (or dive and read the gauge). Is your friend right?",
+        opts: ["Yes, it doubles", "No, it does not double"], correct: 1,
+        hint: "Look: about 202 kPa at 10 m and about 302 kPa at 20 m. Is 302 double 202?",
+        explain: "Right! About 202 kPa at 10 m and 302 kPa at 20 m: <b>not double</b>. The air already gives 101 kPa at the surface. The water <b>adds</b> extra pressure on top of that." },
+      { type: "choice", id: "m2cross", look: "graph", q: "Look at your graph. Where does your line meet the pressure axis (where the depth is 0 m)?",
+        opts: ["At 0 kPa", "At about 101 kPa: the air pressure", "At about 1000 kPa"], correct: 1,
+        explain: `Yes! So the code looks like this:<div class="eqbox">P = air pressure + extra pressure from the water</div>
+          The extra pressure from the water is called <b>gauge pressure</b>. It grows <b>in proportion to depth</b>:
+          double the depth → double the extra pressure (≈ 100 kPa at 10 m, ≈ 200 kPa at 20 m).` },
+    ] },
+
+  { id: 3, icon: "🪨", title: "Does the shape matter?", map: "ocean", vehicle: "diver", start: [60, 0], record: true, data: "stations", stations: true, clue: "side",
+    steps: [
+      { type: "info", html: `<p>Three glowing <b>stations</b> are all at the <b>same depth: 18 m</b>. They are to the east (→).</p>
+        <ul><li><b>A</b>: open water. Lots of water above you.</li>
+        <li><b>B</b>: inside a <b>cave</b>. Heavy <b>rock</b> above you.</li>
+        <li><b>C</b>: at the bottom of a narrow <b>chimney</b> in the rock. Only a thin column of water above you.</li></ul>` },
+      { type: "choice", id: "m3pred", pred: true, q: "Where will the pressure be the highest?",
+        opts: ["A: open water (the most water above)", "B: cave (heavy rock above)", "C: chimney (the least water above)", "The same at all three"] },
+      { type: "task", rec: true, text: "Visit stations <b>A</b>, <b>B</b> and <b>C</b>. Swim into each glowing ring (it pulls you in) and press <b>📍 Record</b>.<br><small>Tip: to reach C, swim over the rock tower and down the chimney.</small>",
+        done: () => ["A", "B", "C"].every(k => S.data.some(r => r.tag === k)),
+        progress: () => STATIONS.map(s => `${s.k} ${S.data.some(r => r.tag === s.k) ? "✅" : "⬜"}`).join("   ") },
+      { type: "choice", id: "m3obs", look: "table", q: "Look at your data table. What did you measure at stations A, B and C?",
+        opts: ["A had the highest pressure", "B had the highest pressure", "C had the highest pressure", "All three were the same"], correct: 3,
+        hint: "Look at your table again.", explain: () => `Yes, <b>exactly the same</b>! ${echo("m3pred")} Surprising, right?` },
+      { type: "choice", id: "m3why", q: "So what does the pressure in a liquid depend on?",
+        opts: ["How much water there is in total", "What is right above you (rock or water)", "How deep you are below the surface", "How far you are from the boat"],
+        correct: 2, hint: "All three stations had different things above them, but one thing was the same…",
+        explain: "Exactly. In one liquid, pressure depends <b>only on the depth</b> below the surface. Moving sideways, or the shape or amount of water, makes no difference." },
+    ] },
+
+  { id: 4, icon: "🧪", title: "Heavier liquids", map: "tank", tank: "liquid", start: [0, 0], record: true, data: "liquid", clue: "rho",
+    steps: [
+      { type: "info", html: `<p>Welcome to the <b>Test Tank</b> 🧪. It is 12 m deep.</p>
+        <p>Lower the <b>pressure probe</b> with ▲ ▼. This probe shows only the <b>extra pressure from the liquid</b> (gauge pressure), without the air.</p>
+        <p>You can fill the tank with different liquids. Each one has a different <b>density</b>, ρ (“rho”): how many kilograms are packed into each cubic metre.</p>` },
+      { type: "choice", id: "m4pred", pred: true, q: "In a denser liquid (more kg in each m³), the pressure at 10 m will be…", opts: ["Higher", "Lower", "The same"] },
+      { type: "task", rec: true, text: "Lower the probe to the <b>10 m line</b> (it clicks into place). Record the pressure in <b>all 4 liquids</b>. Change the liquid with the buttons on the screen.",
+        done: () => LIQUIDS.every(l => S.data.some(r => r.tag === l.name)),
+        progress: () => LIQUIDS.map(l => `${l.name} ${S.data.some(r => r.tag === l.name) ? "✅" : "⬜"}`).join("  "),
+        onDone: () => { S.flags.fit = true; drawGraph(); } },
+      { type: "choice", id: "m4shape", look: "graph", q: "Look at your graph of extra pressure against density. The dashed line continues your data. What do you see?",
+        opts: ["A straight line that goes through zero (0, 0)", "A straight line that does not go through zero", "A curve"], correct: 0,
+        hint: "Follow the dashed line to the left. Where does it hit the axes?",
+        explain: () => `Yes: a straight line through zero means the two are <b>proportional</b>. ${echo("m4pred")}` },
+      { type: "number", id: "m4x2", q: "Water (1000 kg/m³) gives about <b>98 kPa</b> at 10 m. Predict the extra pressure at 10 m in a liquid with density <b>2000 kg/m³</b>.",
+        unit: "kPa", check: v => v >= 190 && v <= 202, hints: ["2000 kg/m³ is double 1000 kg/m³.", "If the density doubles, the pressure doubles: 98 × 2 = ?"],
+        explain: "Yes, about 196 kPa. <b>Double the density → double the pressure.</b> The extra pressure is <b>proportional to the density ρ</b>." },
+    ] },
+
+  { id: 5, icon: "🪐", title: "Other worlds", map: "tank", tank: "planet", start: [0, 0], record: true, data: "planet", clue: "g",
+    steps: [
+      { type: "info", html: `<p>The Space Agency has the same test tank on <b>four worlds</b>, all filled with <b>water</b>.</p>
+        <p>Each world has a different <b>gravity</b> (gravitational field strength) <b>g</b>, measured in N/kg. On Earth, g = 9.81 N/kg.</p>
+        <p>The Super-Earth is a made-up planet with double Earth's gravity.</p>` },
+      { type: "choice", id: "m5pred", pred: true, q: "On a world with stronger gravity, the extra pressure at 10 m will be…", opts: ["Higher", "Lower", "The same"] },
+      { type: "task", rec: true, text: "Lower the probe to the <b>10 m line</b> and record the pressure on <b>all 4 worlds</b>.",
+        done: () => PLANETS.every(p => S.data.some(r => r.tag === p.name)),
+        progress: () => PLANETS.map(p => `${p.name} ${S.data.some(r => r.tag === p.name) ? "✅" : "⬜"}`).join("  "),
+        onDone: () => { S.flags.fit = true; drawGraph(); } },
+      { type: "choice", id: "m5x2", look: "table", q: "Look at your data table. The Super-Earth has <b>double</b> Earth's gravity. Compare the Earth and Super-Earth readings. Its extra pressure is…",
+        opts: ["Half of Earth's", "The same as Earth's", "Double Earth's", "Four times Earth's"], correct: 2,
+        hint: "Compare the Earth row and the Super-Earth row in your table.",
+        explain: () => `Yes! <b>Double the gravity → double the pressure.</b> ${echo("m5pred")}` },
+      { type: "number", id: "m5g5", q: "Predict the extra pressure at 10 m of water on a planet where <b>g = 5 N/kg</b>.", unit: "kPa",
+        check: v => v >= 48 && v <= 52, hints: ["On Earth, g = 9.81 N/kg gives 98.1 kPa at 10 m.", "So each 1 N/kg gives about 10 kPa. What do 5 N/kg give?"],
+        explain: "Correct, 50 kPa. The extra pressure is <b>proportional to g</b>." },
+    ] },
+
+  { id: 6, icon: "🔐", title: "Crack the code", map: "ocean", vehicle: "diver", start: [214, 0], record: false, clue: "code",
+    steps: [
+      { type: "info", html: `<p>You have found all the pieces! Look at the code board above.</p>
+        <p>The extra pressure from a liquid depends on <b>three things</b>. Time to write it as a real physics formula.</p>` },
+      { type: "builder", id: "m6build" },
+      { type: "choice", id: "m6total", q: "Your diver's gauge in the ocean showed the <b>total</b> pressure. Which formula gives the total?",
+        opts: ["P = P<sub>air</sub> + ρ g h", "P = P<sub>air</sub> × ρ g h", "P = ρ g h − P<sub>air</sub>", "P = P<sub>air</sub> − ρ g h"], correct: 0,
+        hint: "Remember Mission 2: the water adds its pressure on top of the air pressure.",
+        explain: "Yes! Total pressure = <b>air pressure + extra pressure from the liquid</b>. That is the pressure code! 🔓" },
+      { type: "number", id: "m6calc", q: `Test the formula with a calculator. Sea water: ρ = 1025 kg/m³, g = 9.81 N/kg, h = 10 m. What is <b>ρ × g × h</b>?`,
+        unit: "Pa", check: v => Math.abs(v - SEA_RGH10) / SEA_RGH10 < 0.01 || Math.abs(v - SEA_RGH10 / 1000) / (SEA_RGH10 / 1000) < 0.01,
+        hints: ["Multiply the three numbers with your calculator: 1025 × 9.81 × 10.", "1025 × 9.81 = 10 055.25. Now multiply by 10."],
+        explain: `ρgh = 100 553 Pa ≈ <b>100.6 kPa</b>. That is what you measured in Mission 2: about 100 kPa more every 10 m! ✅<br>
+          Units: kg/m³ × N/kg × m = N/m² = <b>Pa</b> (pascal). Divide by 1000 to get kPa.` },
+      { type: "number", id: "m6p30", q: "Now <b>predict</b>: what is the total pressure at <b>30 m</b> in sea water? (P<sub>air</sub> = 101.3 kPa)", unit: "kPa",
+        check: v => Math.abs(v - 403.0) <= 5,
+        hints: ["First the water part: ρgh = 1025 × 9.81 × 30 = ? Pa.", "Divide by 1000 to change Pa into kPa (about 301.7 kPa).", "Add the air pressure: 301.7 + 101.3 = ?"],
+        explain: "Correct: about <b>403 kPa</b>. Now let's test your prediction in the water." },
+      { type: "task", text: "Dive to exactly <b>30.0 m</b> and compare the gauge with your prediction.",
+        done: () => Math.abs(S.pos.d - 30) < 0.06, progress: () => `Depth: ${fmtD(S.pos.d)} m · Gauge: ${pNowTxt()} kPa`,
+        success: "Your formula predicted the gauge reading. Code cracked! 🔓" },
+    ] },
+
+  { id: 7, icon: "🌋", title: "Into the abyss", map: "ocean", vehicle: "diver", start: [244, 0], record: false, clue: "abyss",
+    parts: { A: "How deep can a human go?", B: "Test the robot drone", C: "Rescue the lost probe", D: "Explore the bottom" },
+    steps: [
+      { type: "info", html: `<p>East of the reef is a <b>deep trench</b>. This mission has <b>4 parts</b>:</p>
+        <ol class="plan" type="A">
+          <li>🤿 How deep can a <b>human diver</b> go?</li>
+          <li>🟡 Test the <b>robot drone</b>: predict how deep it can go, then dive.</li>
+          <li>🟠 ⏱ <b>Rescue</b> a lost probe: calculate where it is, then find it in 90 seconds.</li>
+          <li>🌋 Explore the <b>bottom of the trench</b>.</li>
+        </ol>` },
+      { type: "task", part: "A", text: "Swim east (→) until the sea floor disappears below you: that is the trench. Then dive <b>as deep as you can</b>.",
+        done: () => S.flags.hitLimit, progress: () => `Depth: ${fmtD(S.pos.d)} m · Pressure: ${pNowTxt()} kPa`,
+        success: "STOP! That's as deep as a human can go here." },
+      { type: "info", part: "A", html: `<p><b>Why can't the diver go deeper?</b> At 60 m the pressure is about <b>7 times</b> the pressure at the surface.</p>
+        <ul><li>The air the diver breathes gets squeezed. Nitrogen starts to act like a drug, and oxygen even becomes poisonous.</li>
+        <li>Coming up too fast after a deep dive can cause the “bends” (decompression sickness).</li></ul>
+        <p><b>Next, Part B:</b> to explore deeper we use a <b>robot drone</b> 🟡 instead of a person.</p>` },
+      { type: "number", part: "B", id: "m7pred", unit: "m",
+        q: "Your yellow robot drone 🟡 can survive a total pressure of up to <b>5000 kPa</b>. Above that, its hull is crushed. Use your formula to <b>predict</b> the deepest it can safely go in sea water (ρ = 1025 kg/m³, g = 9.81 N/kg, P<sub>air</sub> = 101.3 kPa).",
+        check: v => Math.abs(v - 487.2) / 487.2 <= 0.03,
+        hints: ["Start from P = P<sub>air</sub> + ρgh. You know P = 5000 kPa and P<sub>air</sub> = 101.3 kPa. You want h.",
+          "Take away the air: the water part is ρgh = 5000 − 101.3 = 4898.7 kPa.",
+          "Change kPa into Pa: 4898.7 kPa = 4 898 700 Pa.",
+          "Divide: h = 4 898 700 ÷ (1025 × 9.81). Use your calculator."],
+        explain: "Correct: about <b>487 m</b>. Now let's launch the drone and test it… carefully!" },
+      { type: "task", part: "B", vehicle: "drone", hull: 5000,
+        text: "Your drone 🟡 is now at the surface above the trench. Dive to at least <b>450 m</b>, but don't go past your prediction! The bar under the gauge shows how close the hull is to its limit.",
+        done: () => S.pos.d >= 450 && !S.crushed, progress: () => `Depth: ${fmtD(S.pos.d)} m · Pressure: ${pNowTxt()} / 5000 kPa`,
+        success: "450 m reached and the drone is safe!" },
+      { type: "info", part: "C", onStart: () => { place([282, 0]); },
+        html: () => `<p>🚨 <b>Emergency!</b> A small orange research <b>probe</b> 🟠 (not your drone) is lost somewhere in the trench.</p>
+          <p>It can send only one message: <b>“My pressure gauge reads ${S.rescue.probe.P} kPa.”</b></p>
+          <p>Your plan:</p>
+          <ol class="plan"><li><b>Calculate</b> how deep the probe is (next step).</li>
+          <li>Press <b>Start</b>. You then have <b>90 seconds</b>.</li>
+          <li>Dive to that depth with your drone 🟡 and follow the 📡 signal (east or west) until you <b>touch the probe</b> 🟠.</li></ol>
+          <p>Your drone is back at the surface, ready to go.</p>` },
+      { type: "number", part: "C", id: "m7depth", unit: "m",
+        q: () => `The lost probe 🟠 reads <b>${S.rescue.probe.P} kPa</b> (total pressure). How deep is it?`,
+        check: v => Math.abs(v - S.rescue.probe.d) / S.rescue.probe.d <= 0.03,
+        hints: () => {
+          const P = S.rescue.probe.P, w = P - 101.3;
+          return [`It's the same calculation as Part B, with ${P} kPa instead of 5000 kPa.`,
+            `Take away the air: ${P} − 101.3 = ${w.toFixed(1)} kPa = ${Math.round(w * 1000).toLocaleString("en-US").replace(/,/g, " ")} Pa.`,
+            `Divide: h = ${Math.round(w * 1000).toLocaleString("en-US").replace(/,/g, " ")} ÷ (1025 × 9.81).`];
+        },
+        explain: () => `Correct: the probe is at about <b>${S.rescue.probe.d.toFixed(0)} m</b>. Now go and get it!` },
+      { type: "rescue", part: "C", id: "m7rescue" },
+      { type: "task", part: "D", hull: 20000,
+        text: "🚀 Great rescue! Your drone gets a stronger hull: it now survives <b>20 000 kPa</b>. Explore the abyss and reach the <b>bottom of the trench</b>. Look out for strange creatures.",
+        done: () => S.pos.d >= 1490, progress: () => `Depth: ${fmtD(S.pos.d)} m · Pressure: ${pNowTxt()} kPa`,
+        success: "You reached the bottom of the trench!" },
+      { type: "number", part: "D", id: "m7bottom", q: "Read your gauge at the bottom. About how many times bigger is this pressure than the air pressure at the surface (101.3 kPa)?", unit: "times",
+        check: v => v >= 140 && v <= 160, hints: ["Divide the gauge reading by 101.3."],
+        explain: "About <b>150 times</b> the air pressure! Animals living here have no air spaces in their bodies, so the pressure doesn't crush them." },
+    ] },
+];
+
+const CLUES = [
+  { k: "air", icon: "🌬", text: "At the surface the air pushes with ≈ 101 kPa (air pressure)." },
+  { k: "h", icon: "📏", text: "Deeper → more pressure, in a straight line: ≈ +10 kPa every metre in sea water." },
+  { k: "side", icon: "↔️", text: "Only depth matters: not sideways position, not the shape of the water." },
+  { k: "rho", icon: "🧪", text: "Denser liquid → more pressure (double ρ → double pressure)." },
+  { k: "g", icon: "🪐", text: "Stronger gravity → more pressure (double g → double pressure)." },
+  { k: "code", icon: "🔓", text: "P = P_air + ρgh (ρgh in Pa; ÷1000 for kPa)." },
+  { k: "abyss", icon: "🏆", text: "Abyss explorer: you reached the bottom of the trench." },
+];
+
+const BUILD_TILES = [
+  { k: "rho", sym: "ρ", name: "density of the liquid" },
+  { k: "g", sym: "g", name: "gravity" },
+  { k: "h", sym: "h", name: "depth" },
+  { k: "m", sym: "m", name: "mass of the diver", why: "The probe in the test tank had no diver at all, and it still measured pressure." },
+  { k: "w", sym: "w", name: "width of the water", why: "Remember stations A, B and C: the shape and width of the water made no difference." },
+  { k: "t", sym: "t", name: "time spent underwater", why: "When you stayed at one depth, did the pressure change while you waited?" },
+];
+
+/* =====================================================================
+   State
+   ===================================================================== */
+const S = {
+  mi: 0, si: 0, done: false, token: 0,
+  map: "ocean", vehicle: "diver",
+  pos: { x: 62, d: 0 }, vel: { x: 0, d: 0 }, facing: 1, target: null,
+  cam: { x: 62, d: -5 }, view: 16,
+  keys: { up: 0, down: 0, left: 0, right: 0, fine: 0 }, hold: { up: 0, down: 0, left: 0, right: 0 },
+  data: [], lastRec: null, liquid: 1, planet: 2,
+  hull: 0, crushed: 0, crushAt: null, shake: 0, zone: 0, flags: {},
+  rescue: null, ui: {},
+  save: { unlocked: 1, done: [], clues: [], notes: {} },
+};
+const SAVE_KEY = "deepdive-inquiry-v1";
+function persist() { try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(S.save)); } catch (e) { /* storage blocked: fine */ } }
+function restore() {
+  try { const s = JSON.parse(sessionStorage.getItem(SAVE_KEY) || "null"); if (s && s.notes) S.save = s; } catch (e) { /* ignore */ }
+}
+
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const round1 = v => Math.round(v * 10) / 10;
+const fmtD = d => round1(d).toFixed(1);
+const M = () => MISSIONS[S.mi];
+const step = () => M().steps[S.si];
+const span = () => S.data.length ? S.data[S.data.length - 1].h - S.data[0].h : 0;
+
+function env() {
+  if (S.map === "tank") return { rho: LIQUIDS[S.liquid].rho, g: PLANETS[S.planet].g, patm: PLANETS[S.planet].patm };
+  return OCEAN;
+}
+const gaugeMode = () => S.map === "tank";
+/* pressure shown on the gauge, in kPa, at depth h */
+function pShown(h) { const e = env(); return (gaugeMode() ? 0 : e.patm) + e.rho * e.g * h / 1000; }
+const pAbsKPa = h => OCEAN.patm + OCEAN.rho * OCEAN.g * h / 1000;
+const pNow = () => pShown(round1(S.pos.d));
+const pNowTxt = () => pNow().toFixed(1);
+
+/* =====================================================================
+   Canvas setup
+   ===================================================================== */
+const scene = $("#scene"), ctx = scene.getContext("2d");
+const dial = $("#dial"), dctx = dial.getContext("2d");
+const graph = $("#graph"), gctx = graph.getContext("2d");
+let W = 0, H = 0;
+function fitCanvas(c, cx) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  c.width = Math.max(1, Math.round(r.width * d)); c.height = Math.max(1, Math.round(r.height * d));
+  cx.setTransform(d, 0, 0, d, 0, 0);
+  return [r.width, r.height];
+}
+function resize() { [W, H] = fitCanvas(scene, ctx); fitCanvas(dial, dctx); fitCanvas(graph, gctx); drawGraph(); }
+new ResizeObserver(resize).observe(document.body);
+
+const ppm = () => H / S.view;
+const centerX = () => S.map === "tank" ? W * 0.45 : (W < 700 ? W * 0.42 : W * 0.46);
+const sx = x => S.map === "tank" ? centerX() + x * ppm() : centerX() + (x - S.cam.x) * ppm();
+const sy = d => (d - S.cam.d) * ppm();
+
+/* =====================================================================
+   Creatures and particles
+   ===================================================================== */
+/* smooth deterministic noise, used for natural-looking rocks and sea floor */
+function hash1(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; }
+function noise1(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash1(i) * (1 - u) + hash1(i + 1) * u; }
+const fbm = x => noise1(x) * .6 + noise1(x * 2.3 + 5) * .3 + noise1(x * 5.1 + 11) * .1;
+let seedN = 0; const srnd = () => (hash1(++seedN * 7.13) + 1) / 2;
+const inRock = (x, d) => ROCKS.some(r => inPoly(x, d, r));
+
+/* Rocks: the collision shapes stay as they are; what is drawn is a bumpy, rounded version of them */
+const ROCK_VIS = ROCKS.map((poly, ri) => {
+  let A = 0;
+  for (let i = 0; i < poly.length; i++) { const [x0, y0] = poly[i], [x1, y1] = poly[(i + 1) % poly.length]; A += x0 * y1 - x1 * y0; }
+  const pts = []; let k = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const [x0, d0] = poly[i], [x1, d1] = poly[(i + 1) % poly.length];
+    const len = Math.hypot(x1 - x0, d1 - d0), n = Math.max(1, Math.ceil(len / .55));
+    const ex = (x1 - x0) / len, ed = (d1 - d0) / len, nx = A > 0 ? ed : -ed, nd = A > 0 ? -ex : ex;   // outward normal
+    for (let j = 0; j < n; j++, k++) {
+      const f = j / n, disp = fbm(k * .5 + ri * 40) * .32;
+      pts.push({ x: x0 + (x1 - x0) * f + nx * disp, d: d0 + (d1 - d0) * f + nd * disp, nd });
+    }
+  }
+  const xs = poly.map(q => q[0]), ds = poly.map(q => q[1]);
+  const box = { x0: Math.min(...xs), x1: Math.max(...xs), d0: Math.min(...ds), d1: Math.max(...ds) };
+  const deco = pts.filter(q => q.nd < -.55 && srnd() < .5).map(q => ({ x: q.x, d: q.d, type: ["weed", "weed", "sponge", "coral", "weed"][Math.floor(srnd() * 5)],
+    size: .3 + srnd() * .5, ph: srnd() * 6, hue: [300, 20, 340, 45][Math.floor(srnd() * 4)] }));
+  const blobs = Array.from({ length: 45 }, () => ({ x: box.x0 + srnd() * (box.x1 - box.x0), d: box.d0 + srnd() * (box.d1 - box.d0),
+    rx: .25 + srnd() * .9, ry: .15 + srnd() * .45, rot: srnd() * 3, dark: srnd() < .7, a: .08 + srnd() * .14 }));
+  return { pts, box, deco, blobs };
+});
+
+const fish = [], schools = [], anemones = [], jellies = [], anglers = [], kelp = [], corals = [], stones = [], specks = [], clouds = [];
+let bubbles = [], confetti = [], debris = [], splashes = [];
+const REEF_SPECIES = ["tang", "butterfly", "angel", "tang", "butterfly", "angel", "grouper"];
+function openSpot(x, dmin, dmax) {   // a depth at x that is in open water (not in rock, above the floor)
+  for (let i = 0; i < 20; i++) { const d = rnd(dmin, Math.max(dmin, Math.min(dmax, bed(x) - 1.2))); if (!inRock(x, d)) return d; }
+  return Math.max(1, bed(x) - 2);
+}
+(function buildWorld() {
+  for (const ax of [12, 30, 45, 56, 66, 82]) {
+    const a = { x: ax, d: bed(ax) - .05, ph: rnd(0, 6), hue: [330, 290, 350, 15][anemones.length % 4] };
+    anemones.push(a);
+    for (let k = 0; k < 2; k++) fish.push({ sp: "clown", home: a, x: ax, d: a.d - .7, ph: rnd(0, 6) + k * 3, size: rnd(.22, .26), v: 1 });
+  }
+  for (let i = 0; i < 26; i++) {
+    const sp = REEF_SPECIES[i % REEF_SPECIES.length], big = sp === "grouper";
+    const x = rnd(8, 255), d = big ? openSpot(x, 18, 46) : openSpot(x, 2, 22);
+    fish.push({ sp, x, d, xa: Math.max(4, x - 40), xb: Math.min(262, x + 40), v: (Math.random() < .5 ? -1 : 1) * rnd(.5, 1.2) * (big ? .5 : 1),
+      size: big ? rnd(.55, .7) : rnd(.22, .3), ph: rnd(0, 6) });
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = rnd(30, 250);
+    schools.push({ x, d: openSpot(x, 6, 30), xa: Math.max(10, x - 50), xb: Math.min(262, x + 50), v: (i % 2 ? 1 : -1) * rnd(1.2, 2), ph: rnd(0, 6),
+      members: Array.from({ length: 16 }, () => ({ ox: rnd(-2.2, 2.2), od: rnd(-1, 1), ph: rnd(0, 6) })) });
+  }
+  for (let i = 0; i < 14; i++) jellies.push({ x: rnd(270, 430), d: rnd(150, 1000), ph: rnd(0, 6), size: rnd(1, 3), hue: rnd(180, 320) });
+  for (let i = 0; i < 4; i++) anglers.push({ x: rnd(300, 400), d: rnd(950, 1450), v: rnd(.6, 1.4) * (i % 2 ? 1 : -1), ph: rnd(0, 6) });
+  for (let i = 0; i < 16; i++) kelp.push({ x: rnd(2, 60), h: rnd(2.5, 6), ph: rnd(0, 6) });
+  for (let i = 0; i < 18; i++) corals.push({ x: rnd(0, 56), r: rnd(.3, .8), hue: [0, 20, 300, 45, 170][i % 5] });
+  for (let i = 0; i < 50; i++) stones.push({ x: rnd(-2, 262), r: rnd(.25, .9), seed: rnd(0, 100) });
+  for (let i = 0; i < 160; i++) specks.push({ u: Math.random(), v: Math.random(), r: rnd(.6, 1.8), s: rnd(.004, .015) });
+  for (let i = 0; i < 6; i++) clouds.push({ x: rnd(-60, 520), y: rnd(.15, .7), s: rnd(.8, 1.6) });
+})();
+const whale = { x: 300, d: 320, v: 2.2 };
+const orca = { x: 340, d: 7, v: 2.4 };
+const pod = { cx: 80, dir: 1, members: [{ ox: 0, od: 0, ph: 0, next: 2 }, { ox: 3, od: .7, ph: 2, next: 5 }, { ox: -2.6, od: .4, ph: 4, next: 7.5 }] };
+/* where the shark patrols in each mission: [x from, x to, depth from, depth to]. Kept away from stations and test spots. */
+const SHARK_PATHS = { 1: [50, 80, 7, 11], 2: [228, 262, 18, 26], 3: [80, 128, 2.5, 4.5], 6: [234, 262, 10, 20], 7: [252, 300, 8, 16] };
+const seen = {};   // one-time animal facts
+
+/* =====================================================================
+   Input
+   ===================================================================== */
+function keyChange(e, down) {
+  // Slow mode follows the real Shift state carried by every key event, so a missed
+  // Shift release (focus in a text box, a system shortcut…) can never leave it stuck on.
+  S.keys.fine = e.shiftKey ? 1 : 0;
+  const tg = e.target;
+  if ((tg.tagName === "INPUT" && tg.type !== "checkbox") || tg.tagName === "SELECT" || tg.tagName === "TEXTAREA") return;
+  if (!$("#notebook").hidden || !$("#welcome").hidden) return;
+  const k = e.key;
+  const map = { ArrowUp: "up", w: "up", W: "up", ArrowDown: "down", s: "down", S: "down", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
+  if (map[k]) { S.keys[map[k]] = down ? 1 : 0; e.preventDefault(); }
+  else if (k === " ") { e.preventDefault(); if (down && !e.repeat) record(); }
+}
+addEventListener("keydown", e => keyChange(e, true));
+addEventListener("keyup", e => keyChange(e, false));
+addEventListener("blur", () => { for (const k in S.keys) S.keys[k] = 0; });
+addEventListener("pointermove", e => { S.keys.fine = e.shiftKey ? 1 : 0; });
+document.addEventListener("visibilitychange", () => { for (const k in S.keys) S.keys[k] = 0; });
+function holdButton(el, dir) {
+  const on = e => { e.preventDefault(); S.hold[dir] = 1; el.classList.add("held"); el.setPointerCapture?.(e.pointerId); };
+  const off = () => { S.hold[dir] = 0; el.classList.remove("held"); };
+  el.addEventListener("pointerdown", on); el.addEventListener("pointerup", off);
+  el.addEventListener("pointercancel", off); el.addEventListener("lostpointercapture", off);
+}
+holdButton($("#upBtn"), "up"); holdButton($("#downBtn"), "down");
+holdButton($("#leftBtn"), "left"); holdButton($("#rightBtn"), "right");
+let dragging = false;
+function aimAt(e) {
+  const r = scene.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+  const d = S.cam.d + py / ppm();
+  const x = S.map === "tank" ? 0 : S.cam.x + (px - centerX()) / ppm();
+  S.target = { x, d: Math.max(0, d) };
+}
+scene.addEventListener("pointerdown", e => { dragging = true; scene.setPointerCapture(e.pointerId); aimAt(e); });
+scene.addEventListener("pointermove", e => { if (dragging) aimAt(e); });
+scene.addEventListener("pointerup", () => { dragging = false; });
+scene.addEventListener("pointercancel", () => { dragging = false; });
+$("#recordBtn").addEventListener("click", record);
+
+/* =====================================================================
+   Movement and world update
+   ===================================================================== */
+function blocked(x, d) {
+  if (S.map === "tank") return false;
+  if (x < X_MIN || x > X_MAX) return true;
+  const pts = S.vehicle === "drone" ? [[0, 0], [1, 0], [-1, 0], [0, .5], [0, -.4]] : [[0, 0], [.5, 0], [-.5, 0], [0, .3], [0, -.3]];
+  for (const [ox, od] of pts) {
+    const px = x + ox, pd = d + od;
+    if (pd > bed(px) - .25) return true;
+    for (const r of ROCKS) if (inPoly(px, pd, r)) return true;
+  }
+  return false;
+}
+function maxDepth() {
+  if (S.map === "tank") return 11.6;
+  return S.vehicle === "diver" ? HUMAN_LIMIT : 1e9;
+}
+
+let t = 0, breath = 0;
+function update(dt) {
+  const sp = SPEED[S.map === "tank" ? "probe" : S.vehicle] * (S.keys.fine ? (S.vehicle === "drone" ? .06 : .12) : 1);
+  let ix = (S.keys.right || S.hold.right) - (S.keys.left || S.hold.left);
+  let iy = (S.keys.down || S.hold.down) - (S.keys.up || S.hold.up);
+  if (S.map === "tank") ix = 0;
+  let wx = 0, wd = 0;
+  if (S.crushed > 0) { /* no control while crushed */ }
+  else if (ix || iy) {
+    S.target = null;
+    const n = Math.hypot(ix, iy); wx = ix / n * sp; wd = iy / n * sp;
+  } else if (S.target) {
+    const dx = S.target.x - S.pos.x, dd = S.target.d - S.pos.d, dist = Math.hypot(dx, dd);
+    const v = Math.min(sp, dist * 2.2);
+    if (dist > 0.01) { wx = dx / dist * v; wd = dd / dist * v; }
+    if (dist < 0.02 && !dragging) S.target = null;
+  } else {
+    magnets(dt);
+  }
+  S.vel.x += (wx - S.vel.x) * Math.min(1, dt * 6);
+  S.vel.d += (wd - S.vel.d) * Math.min(1, dt * 6);
+  if (Math.abs(S.vel.x) > .2) S.facing = Math.sign(S.vel.x);
+
+  const nx = S.map === "tank" ? 0 : S.pos.x + S.vel.x * dt;
+  let nd = S.pos.d + S.vel.d * dt;
+  const md = maxDepth();
+  if (nd > md) {
+    nd = md; S.vel.d = 0;
+    if (S.vehicle === "diver" && S.map === "ocean") {
+      if (!S.flags.hitLimit) toast("⛔ STOP! Too deep for a human diver. The pressure here is about 7 times the surface pressure.", "danger", 4000);
+      S.flags.hitLimit = true;
+    }
+  }
+  if (nd < 0) { nd = 0; S.vel.d = Math.max(0, S.vel.d); }
+  if (!blocked(nx, S.pos.d)) S.pos.x = nx; else S.vel.x = 0;
+  if (!blocked(S.pos.x, nd)) S.pos.d = nd; else S.vel.d = 0;
+
+  // camera and zoom
+  const viewTarget = S.map === "tank" ? 16 : S.vehicle === "drone" ? 60 : 16;
+  S.view += (viewTarget - S.view) * Math.min(1, dt * 2);
+  if (S.map === "tank") { S.cam.x = 0; S.cam.d = -2.6; }
+  else {
+    S.cam.x += (S.pos.x - S.cam.x) * Math.min(1, dt * 4);
+    const cd = Math.max(-S.view * 0.3, S.pos.d - S.view * 0.45);
+    S.cam.d += (cd - S.cam.d) * Math.min(1, dt * 5);
+  }
+
+  // danger zones (human diver in the ocean)
+  if (S.map === "ocean" && S.vehicle === "diver") {
+    const z = ZONES.findIndex(z => S.pos.d < z.to);
+    if (z > S.zone && ZONE_MSG[z]) toast(ZONE_MSG[z], z >= 3 ? "danger" : "warn", 3500);
+    S.zone = z;
+  }
+  // drone hull
+  if (S.vehicle === "drone" && S.hull && S.crushed <= 0) {
+    const frac = pAbsKPa(S.pos.d) / S.hull;
+    if (frac > .85) S.shake = (frac - .85) * 40;
+    if (frac >= 1) crush();
+  }
+  if (S.crushed > 0) {
+    S.crushed -= dt;
+    if (S.crushed <= 0) { S.crushed = 0; place([282, 0]); toast("🔧 A new drone is ready at the surface. Check your calculation and try again.", "warn", 3500); }
+  }
+  S.shake *= .9;
+
+  // creatures
+  updateAnimals(dt);
+  for (const a of anglers) { a.x += a.v * dt; if (a.x > 395 || a.x < 300) a.v *= -1; }
+  whale.x += whale.v * dt; if (whale.x > 440 || whale.x < 280) whale.v *= -1;
+  for (const j of jellies) j.d -= Math.max(0, Math.sin(t * 1.2 + j.ph)) * .8 * dt;
+  for (const c of clouds) { c.x += 1.5 * dt; if (c.x > 540) c.x = -80; }
+
+  // diver breath bubbles
+  if (S.vehicle === "diver" && S.map === "ocean") {
+    breath -= dt;
+    if (breath <= 0) {
+      breath = 2.4;
+      for (let i = 0; i < 6; i++) bubbles.push({ x: S.pos.x + S.facing * .9, d: S.pos.d - .1, p0: pAbsKPa(S.pos.d), r: rnd(2, 3.6), delay: i * .07, wob: rnd(0, 6) });
+    }
+  }
+  for (const b of bubbles) { if (b.delay > 0) { b.delay -= dt; continue; } b.d -= (.9 + b.r * .15) * dt; b.x += Math.sin(t * 5 + b.wob) * .01; }
+  bubbles = bubbles.filter(b => b.d > -.05);
+  for (const c of confetti) { c.vy += 420 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt; c.life -= dt; }
+  confetti = confetti.filter(c => c.life > 0);
+  for (const p of debris) { p.x += p.vx * dt; p.d += p.vd * dt; p.vd += 3 * dt; p.life -= dt; }
+  debris = debris.filter(p => p.life > 0);
+
+  stepTick(dt);
+}
+
+function magnets(dt) {
+  let goal = null;
+  if (S.map === "tank" && Math.abs(S.pos.d - 10) < .45) goal = { x: 0, d: 10 };
+  if (M().stations) for (const s of STATIONS) if (Math.abs(S.pos.x - s.x) < 2.6 && Math.abs(S.pos.d - s.d) < 1.6) goal = s;
+  if (!goal) return;
+  const k = Math.min(1, dt * 4);
+  S.pos.x += (goal.x - S.pos.x) * k; S.pos.d += (goal.d - S.pos.d) * k;
+  if (Math.abs(goal.d - S.pos.d) < .02) { S.pos.d = goal.d; if (S.map !== "tank") S.pos.x = goal.x; }
+  S.vel.x *= .8; S.vel.d *= .8;
+}
+
+function crush() {
+  S.crushed = 2.2; S.shake = 18; S.crushAt = { x: S.pos.x, d: S.pos.d };
+  for (let i = 0; i < 40; i++) debris.push({ x: S.pos.x, d: S.pos.d, vx: rnd(-6, 6), vd: rnd(-6, 4), life: rnd(1, 2), r: rnd(2, 5) });
+  toast(`💥 CRUNCH! The drone was crushed at ${fmtD(S.pos.d)} m (${pAbsKPa(S.pos.d).toFixed(0)} kPa).`, "danger", 3500);
+  S.vel.x = S.vel.d = 0;
+}
+
+function place([x, d]) { S.pos.x = x; S.pos.d = d; S.vel.x = S.vel.d = 0; S.target = null; S.cam.x = x; S.cam.d = d - S.view * .45; S.zone = 0; }
+
+/* =====================================================================
+   Recording
+   ===================================================================== */
+function recIndex() { const i = M().steps.findIndex(st => st.rec); return i < 0 ? Infinity : i; }
+const recordOpen = () => !!M().record && (S.done || S.si >= recIndex());
+function updateRecordBtn() {
+  const btn = $("#recordBtn"); btn.hidden = !recordOpen();
+  const st = !S.done && step(), goal = st && st.goal;
+  btn.innerHTML = goal ? `📍 Record <b>${Math.min(S.data.length, goal)}/${goal}</b> <kbd>Space</kbd>` : `📍 Record <kbd>Space</kbd>`;
+}
+function record() {
+  const m = M();
+  if (!m.record) { toast("No measurements needed in this mission. Follow the steps on the right."); return; }
+  if (!recordOpen()) { toast("First answer the question on the right 👉 Then you can record.", "warn"); return; }
+  if (S.crushed) return;
+  const h = round1(S.pos.d), p = pShown(h);
+  let row = null;
+  if (m.data === "depth") {
+    if (S.data.some(r => r.h === h)) { toast(`You already recorded ${h.toFixed(1)} m. Try a new depth!`, "warn"); return; }
+    row = { h, p };
+  } else if (m.data === "stations") {
+    const s = STATIONS.find(s => Math.abs(S.pos.x - s.x) < 1.2 && Math.abs(S.pos.d - s.d) < .3);
+    if (!s) { toast("Swim into a glowing station ring first, then record.", "warn"); return; }
+    S.data = S.data.filter(r => r.tag !== s.k);
+    row = { h, p, tag: s.k, label: `${s.k} (${s.name})` };
+  } else {
+    if (h !== 10) { toast("Move the probe to the 10 m line first (it clicks into place).", "warn"); return; }
+    const item = m.data === "liquid" ? LIQUIDS[S.liquid] : PLANETS[S.planet];
+    S.data = S.data.filter(r => r.tag !== item.name);
+    row = { h, p, tag: item.name, label: item.name, xv: m.data === "liquid" ? item.rho : item.g };
+  }
+  S.data.push(row);
+  S.data.sort((a, b) => m.data === "depth" || m.data === "stations" ? (a.h - b.h || (a.tag > b.tag ? 1 : -1)) : a.xv - b.xv);
+  S.lastRec = row;
+  toast(`📍 ${row.label ? row.label + ": " : ""}h = ${h.toFixed(1)} m → P = ${p.toFixed(1)} kPa`);
+  renderData();
+  if (m.map === "tank") renderTankBar();
+}
+
+/* =====================================================================
+   Drawing
+   ===================================================================== */
+const WSTOPS = [[0, "#2bc0e4"], [20, "#0b7fc0"], [60, "#07508f"], [200, "#03244a"], [600, "#010d22"], [1600, "#000309"]];
+function hex(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mix(a, b, f) { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(",")})`; }
+function waterAt(d) {
+  d = Math.max(0, d);
+  for (let i = 1; i < WSTOPS.length; i++) if (d <= WSTOPS[i][0]) {
+    const [d0, c0] = WSTOPS[i - 1], [d1, c1] = WSTOPS[i]; return mix(c0, c1, (d - d0) / (d1 - d0));
+  }
+  return WSTOPS[WSTOPS.length - 1][1];
+}
+const wave = x => Math.sin(x * .018 + t * 1.4) * 3 + Math.sin(x * .047 - t * 1.1) * 1.6;
+
+function drawScene() {
+  ctx.save();
+  ctx.clearRect(0, 0, W, H);
+  if (S.shake > .3) ctx.translate(rnd(-S.shake, S.shake), rnd(-S.shake, S.shake));
+  if (S.map === "tank") drawTank(); else drawOcean();
+  drawRuler();
+  ctx.restore();
+  for (const c of confetti) {
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.globalAlpha = clamp(c.life, 0, 1);
+    ctx.fillStyle = c.col; ctx.fillRect(-4, -2.5, 8, 5); ctx.restore();
+  }
+}
+
+function drawOcean() {
+  const P = ppm(), ySurf = sy(0);
+  const x0 = S.cam.x - (centerX() / P) - 2, x1 = S.cam.x + (W - centerX()) / P + 2;   // visible world x range
+  // sky
+  if (ySurf > 0) {
+    const g = ctx.createLinearGradient(0, ySurf - 5 * P, 0, ySurf);
+    g.addColorStop(0, "#38bdf8"); g.addColorStop(1, "#e0f2fe");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, ySurf + 2);
+    const sg = ctx.createRadialGradient(W * .7, ySurf - 3.4 * P, 0, W * .7, ySurf - 3.4 * P, 1.8 * P);
+    sg.addColorStop(0, "rgba(255,255,230,1)"); sg.addColorStop(.3, "rgba(255,240,180,.7)"); sg.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, ySurf);
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    for (const c of clouds) {
+      const cx = sx(c.x * .3 + S.cam.x * .7), cy = ySurf - (4.4 - c.y * 3) * P, s = c.s * P;
+      ctx.beginPath(); ctx.ellipse(cx, cy, s * 1.3, s * .35, 0, 0, 7); ctx.ellipse(cx + s * .5, cy - s * .2, s * .6, s * .3, 0, 0, 7); ctx.fill();
+    }
+  }
+  // water
+  const dTop = Math.max(0, S.cam.d), dBot = S.cam.d + S.view;
+  const wg = ctx.createLinearGradient(0, sy(dTop), 0, sy(dBot));
+  for (let i = 0; i <= 8; i++) wg.addColorStop(i / 8, waterAt(dTop + (dBot - dTop) * i / 8));
+  ctx.fillStyle = wg; ctx.beginPath();
+  if (ySurf > -10) { ctx.moveTo(0, H); for (let x = 0; x <= W + 10; x += 10) ctx.lineTo(x, ySurf + wave(x + S.cam.x * P)); ctx.lineTo(W, H); }
+  else ctx.rect(0, 0, W, H);
+  ctx.fill();
+  // sun rays
+  if (S.cam.d < 40) {
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 7; i++) {
+      const rx = ((i * 190 - S.cam.x * P * .3) % (W + 300) + W + 300) % (W + 300) - 150 + Math.sin(t * .4 + i) * 20;
+      const g = ctx.createLinearGradient(0, ySurf, 0, sy(35));
+      g.addColorStop(0, "rgba(200,245,255,.09)"); g.addColorStop(1, "rgba(200,245,255,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(rx - 16, Math.max(ySurf, -5)); ctx.lineTo(rx + 20, Math.max(ySurf, -5));
+      ctx.lineTo(rx + 150, sy(35)); ctx.lineTo(rx + 50, sy(35)); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // floating specks (screen-space, scrolled with parallax)
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  for (const s of specks) {
+    const px = ((s.u * W - S.cam.x * P * .8) % W + W) % W, py = ((s.v * H - S.cam.d * P * .8 + t * s.s * H) % H + H) % H;
+    if (py < ySurf) continue;
+    ctx.beginPath(); ctx.arc(px, py, s.r, 0, 7); ctx.fill();
+  }
+  // boat at the dive site
+  if (ySurf > -3 * P) drawBoat(sx(M().start[0] - 6), ySurf, P);
+  if (whale.x > x0 - 20 && whale.x < x1 + 20) drawWhale(P);
+  // kelp and coral behind the floor
+  for (const k of kelp) if (k.x > x0 && k.x < x1) {
+    const x = sx(k.x), y = sy(bed(k.x)) + 2;
+    ctx.strokeStyle = "rgba(34,120,60,.9)"; ctx.lineWidth = Math.max(3, P * .12); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let i = 1; i <= 8; i++) { const f = i / 8; ctx.lineTo(x + Math.sin(t * 1.2 + k.ph + f * 3) * .3 * P * f, y - k.h * P * f); }
+    ctx.stroke();
+  }
+  drawFloor(x0, x1, P);
+  for (const c of corals) if (c.x > x0 && c.x < x1) {
+    const x = sx(c.x), y = sy(bed(c.x)) + 2, r = c.r * P;
+    ctx.fillStyle = `hsl(${c.hue} 75% 60%)`; ctx.beginPath(); ctx.arc(x, y - r * .6, r * .6, 0, 7); ctx.arc(x + r * .5, y - r * .3, r * .45, 0, 7); ctx.arc(x - r * .5, y - r * .25, r * .4, 0, 7); ctx.fill();
+  }
+  for (const a of anemones) if (a.x > x0 - 2 && a.x < x1 + 2) drawAnemone(a, P);
+  drawVent(P);
+  // creatures
+  for (const f of fish) if (f.x > x0 - 2 && f.x < x1 + 2) drawFish(f, P);
+  for (const sc of schools) if (sc.x > x0 - 5 && sc.x < x1 + 5) drawSchool(sc, P);
+  if (S.shark) drawShark(P);
+  if (orca.x > x0 - 10 && orca.x < x1 + 10) drawCetacean(orca.x, orca.d, 3.4 * P, Math.sign(orca.v), 0, "orca");
+  for (const m of pod.members) { const x = pod.cx + m.ox; if (x > x0 - 4 && x < x1 + 4) drawCetacean(x, m.d, 1.15 * P, pod.dir, Math.atan2(m.vy || 0, 4.5), "dolphin"); }
+  drawSplashes(P);
+  for (const j of jellies) if (j.x > x0 - 5 && j.x < x1 + 5) drawJelly(j, P);
+  for (const a of anglers) if (a.x > x0 - 5 && a.x < x1 + 5) drawAngler(a, P);
+  if (M().stations) drawStations(P);
+  // bubbles (they grow as they rise: Boyle's law)
+  ctx.lineWidth = 1.2;
+  for (const b of bubbles) {
+    if (b.delay > 0) continue;
+    const x = sx(b.x), y = sy(b.d); if (y < -10 || y > H + 10) continue;
+    const r = b.r * Math.cbrt(b.p0 / pAbsKPa(Math.max(0, b.d)));
+    ctx.strokeStyle = "rgba(220,250,255,.85)"; ctx.fillStyle = "rgba(220,250,255,.15)";
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  // darkness of the deep with a light around the drone
+  const dark = clamp((S.pos.d - 120) / 500, 0, .9);
+  const px = sx(S.pos.x), py = sy(S.pos.d);
+  if (dark > 0) {
+    const g = ctx.createRadialGradient(px + S.facing * 40, py + 10, 30, px + S.facing * 40, py + 10, Math.max(W, H) * .55);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(.35, `rgba(0,0,0,${dark * .5})`); g.addColorStop(1, `rgba(0,0,0,${dark})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  // glowing things on top of the darkness
+  for (const j of jellies) if (j.x > x0 - 5 && j.x < x1 + 5 && dark > .2) drawJellyGlow(j, P);
+  for (const a of anglers) if (a.x > x0 - 5 && a.x < x1 + 5) drawLure(a, P);
+  if (S.rescue && S.rescue.running) drawBeacon(P);
+  // the player
+  if (!S.crushed) {
+    const bob = S.vehicle === "diver" ? Math.sin(t * 1.6) * 2 : Math.sin(t * 2) * 1.5;
+    if (S.vehicle === "diver") drawDiver(px, py + bob, P * 1.3, clamp(S.vel.d * .1, -.5, .5), 3 + Math.min(9, Math.hypot(S.vel.x, S.vel.d) * 2));
+    else drawDrone(px, py + bob, Math.max(56, P * 3.4), dark);
+  }
+  for (const p of debris) {
+    ctx.fillStyle = `rgba(250,204,21,${clamp(p.life, 0, 1)})`; ctx.fillRect(sx(p.x), sy(p.d), p.r, p.r);
+  }
+  if (S.target && Math.hypot(S.target.x - S.pos.x, S.target.d - S.pos.d) > .1) {
+    ctx.strokeStyle = "rgba(250,204,21,.75)"; ctx.setLineDash([3, 5]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx(S.target.x), sy(S.target.d), 12, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // red danger pulse for the human diver
+  if (S.vehicle === "diver" && S.pos.d > 40) {
+    const a = (.15 + .2 * (S.pos.d - 40) / 20) * (.6 + .4 * Math.sin(t * 6));
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .75);
+    g.addColorStop(0, "rgba(220,38,38,0)"); g.addColorStop(1, `rgba(220,38,38,${a})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  if (S.crushed > 1.9) { ctx.fillStyle = `rgba(255,255,255,${(S.crushed - 1.9) * 3})`; ctx.fillRect(0, 0, W, H); }
+}
+
+/* visual floor: the collision floor outline, pushed in and out along its normal with noise,
+   so steep trench walls look rocky too (rougher with depth) */
+const BED_VIS = (() => {
+  const out = [];
+  for (let i = 1; i < BED.length; i++) {
+    const [x0, d0] = BED[i - 1], [x1, d1] = BED[i];
+    const len = Math.hypot(x1 - x0, d1 - d0), ex = (x1 - x0) / len, ed = (d1 - d0) / len;
+    const n = Math.max(1, Math.ceil(len / (Math.max(d0, d1) > 60 ? 1.5 : .5)));
+    for (let j = 0; j < n; j++) { const f = j / n; out.push({ x: x0 + (x1 - x0) * f, d: d0 + (d1 - d0) * f, nx: ed, nd: -ex }); }
+  }
+  const [lx, ld] = BED[BED.length - 1]; out.push({ x: lx, d: ld, nx: 0, nd: -1 });
+  let arc = 0;
+  out.forEach((q, i) => {
+    if (i) arc += Math.hypot(q.x - out[i - 1].x, q.d - out[i - 1].d);
+    const amp = .3 + clamp((q.d - 50) * .01, 0, 4), disp = fbm(arc * .12) * amp + noise1(arc * .7 + 3) * amp * .35;
+    q.vx = q.x + q.nx * disp; q.vd = q.d + q.nd * disp;
+  });
+  return out;
+})();
+const floorAt = x => bed(x) + fbm(x * .3) * .3;
+function smoothPath(pts) {   // closed path through screen points, rounded with quadratic curves
+  const n = pts.length; ctx.beginPath();
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  let m = mid(pts[n - 1], pts[0]); ctx.moveTo(m[0], m[1]);
+  for (let i = 0; i < n; i++) { const q = pts[(i + 1) % n], mm = mid(pts[i], q); ctx.quadraticCurveTo(pts[i][0], pts[i][1], mm[0], mm[1]); }
+  ctx.closePath();
+}
+function drawFloor(x0, x1, P) {
+  const g = ctx.createLinearGradient(0, sy(0), 0, sy(60));
+  g.addColorStop(0, "#d6bd8c"); g.addColorStop(1, "#8a7350");
+  const stepX = Math.max(.4, 5 / P);
+  let i0 = 0, i1 = BED_VIS.length - 1;
+  while (i0 < i1 && BED_VIS[i0].x < x0 - 15) i0++;
+  while (i1 > i0 && BED_VIS[i1].x > x1 + 15) i1--;
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(sx(BED_VIS[i0].vx), H + 50);
+  for (let i = i0; i <= i1; i++) ctx.lineTo(sx(BED_VIS[i].vx), sy(BED_VIS[i].vd));
+  ctx.lineTo(sx(BED_VIS[i1].vx), H + 50); ctx.closePath(); ctx.fill();
+  ctx.save(); ctx.clip();
+  // sand ripples near the top, darker rock on the deep walls
+  ctx.strokeStyle = "rgba(120,95,60,.25)"; ctx.lineWidth = 1.5;
+  for (let k = 1; k <= 3; k++) {
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += stepX * 2) { const y = sy(floorAt(x) + k * .45) + Math.sin(x * 3) * 2; x === x0 ? ctx.moveTo(sx(x), y) : ctx.lineTo(sx(x), y); }
+    ctx.stroke();
+  }
+  const tg = ctx.createLinearGradient(0, sy(55), 0, sy(300));
+  tg.addColorStop(0, "rgba(70,60,52,0)"); tg.addColorStop(1, "rgba(45,38,33,1)");
+  ctx.fillStyle = tg; ctx.fillRect(0, sy(55), W, Math.max(0, H + 60 - sy(55)));
+  // cracks and ledges on the deep walls
+  ctx.strokeStyle = "rgba(15,12,10,.45)"; ctx.lineWidth = Math.max(1, P * .05);
+  for (let i = i0; i <= i1; i += 6) {
+    const q = BED_VIS[i]; if (q.d < 70) continue;
+    const y = sy(q.vd); if (y < -40 || y > H + 40) continue;
+    const L = (2 + 3 * Math.abs(hash1(i))) * P, ang = hash1(i * 3) * .5 + (q.nx > 0 ? Math.PI : 0);
+    ctx.beginPath(); ctx.moveTo(sx(q.vx), y); ctx.lineTo(sx(q.vx) + Math.cos(ang) * L, y + Math.sin(ang) * L * .4); ctx.stroke();
+  }
+  ctx.restore();
+  for (const st of stones) if (st.x > x0 - 2 && st.x < x1 + 2) drawStone(st, P);
+  drawRocks(P);
+}
+function drawStone(st, P) {
+  const x = sx(st.x), y = sy(bed(st.x) + st.r * .3), r = st.r * P;
+  if (x < -2 * r || x > W + 2 * r || y < -2 * r || y > H + 2 * r) return;
+  const pts = [];
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, rr = r * (1 + .25 * noise1(st.seed + i * .9)); pts.push([x + Math.cos(a) * rr * 1.3, y + Math.sin(a) * rr * .8]); }
+  smoothPath(pts);
+  const g = ctx.createLinearGradient(0, y - r, 0, y + r);
+  g.addColorStop(0, "#8b7d6b"); g.addColorStop(1, "#4a4038");
+  ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = "rgba(30,25,20,.5)"; ctx.lineWidth = 1; ctx.stroke();
+}
+function drawRocks(P) {
+  for (const r of ROCK_VIS) {
+    if (sx(r.box.x1) < -40 || sx(r.box.x0) > W + 40 || sy(r.box.d1) < -40 || sy(r.box.d0) > H + 40) continue;
+    const pts = r.pts.map(q => [sx(q.x), sy(q.d)]);
+    smoothPath(pts);
+    const g = ctx.createLinearGradient(0, sy(r.box.d0), 0, sy(r.box.d1));
+    g.addColorStop(0, "#8a7a66"); g.addColorStop(.45, "#5f5347"); g.addColorStop(1, "#372f29");
+    ctx.fillStyle = g; ctx.fill();
+    ctx.save(); ctx.clip();
+    for (const b of r.blobs) {   // stains, pits and lighter patches
+      ctx.fillStyle = b.dark ? `rgba(20,15,10,${b.a})` : `rgba(255,240,220,${b.a * .6})`;
+      ctx.beginPath(); ctx.ellipse(sx(b.x), sy(b.d), b.rx * P, b.ry * P, b.rot, 0, 7); ctx.fill();
+    }
+    ctx.translate(0, Math.max(2, P * .08)); smoothPath(pts);   // light catching the top edges
+    ctx.strokeStyle = "rgba(255,245,225,.22)"; ctx.lineWidth = Math.max(3, P * .14); ctx.stroke();
+    ctx.restore();
+    smoothPath(pts); ctx.strokeStyle = "rgba(25,20,15,.75)"; ctx.lineWidth = 2; ctx.stroke();
+    for (const d of r.deco) drawDeco(d, P);
+  }
+}
+function drawDeco(d, P) {
+  const x = sx(d.x), y = sy(d.d) + 1, s = d.size * P;
+  if (x < -s || x > W + s || y < -s * 2 || y > H + s) return;
+  if (d.type === "weed") {
+    ctx.strokeStyle = "rgba(52,140,70,.9)"; ctx.lineWidth = Math.max(2, s * .12); ctx.lineCap = "round";
+    for (let k = -1; k <= 1; k++) {
+      const sw = Math.sin(t * 1.4 + d.ph + k) * s * .25;
+      ctx.beginPath(); ctx.moveTo(x + k * s * .18, y); ctx.quadraticCurveTo(x + k * s * .3 + sw, y - s * .6, x + k * s * .4 + sw * 1.6, y - s * (1.1 + .2 * k * k)); ctx.stroke();
+    }
+  } else if (d.type === "sponge") {
+    ctx.fillStyle = `hsl(${d.hue} 65% 50%)`;
+    for (let k = -1; k <= 1; k++) { const h = s * (.55 + .25 * (1 - Math.abs(k))); ctx.beginPath(); ctx.roundRect(x + k * s * .28 - s * .11, y - h, s * .22, h, s * .1); ctx.fill(); }
+    ctx.fillStyle = "rgba(0,0,0,.35)"; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.ellipse(x + k * s * .28, y - s * (.55 + .25 * (1 - Math.abs(k))) + 2, s * .07, s * .03, 0, 0, 7); ctx.fill(); }
+  } else {
+    ctx.strokeStyle = `hsl(${d.hue} 75% 65%)`; ctx.lineWidth = Math.max(2, s * .1); ctx.lineCap = "round";
+    const br = (bx, by, ang, len, depth) => {
+      const ex = bx + Math.cos(ang) * len, ey = by + Math.sin(ang) * len;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+      if (depth > 0) { br(ex, ey, ang - .45, len * .7, depth - 1); br(ex, ey, ang + .45, len * .7, depth - 1); }
+    };
+    br(x, y, -Math.PI / 2, s * .45, 2);
+  }
+}
+function drawAnemone(a, P) {
+  const x = sx(a.x), y = sy(a.d), s = .6 * P;
+  if (x < -s * 2 || x > W + s * 2 || y < -s * 2 || y > H + s) return;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 20; i++) {
+    const f = i / 19, bx = x + (f - .5) * s * 1.1, sw = Math.sin(t * 1.5 + a.ph + f * 3) * s * .15;
+    ctx.strokeStyle = `hsl(${a.hue} 80% ${58 + 12 * Math.sin(i * 1.3)}%)`; ctx.lineWidth = Math.max(2, s * .09);
+    ctx.beginPath(); ctx.moveTo(bx, y - s * .15);
+    ctx.quadraticCurveTo(bx + (f - .5) * s * .6 + sw, y - s * .6, bx + (f - .5) * s + sw * 1.6, y - s * (.85 + .15 * Math.sin(i * 1.7))); ctx.stroke();
+  }
+  ctx.fillStyle = `hsl(${a.hue} 45% 32%)`; ctx.beginPath(); ctx.ellipse(x, y, s * .6, s * .25, 0, Math.PI, 0); ctx.fill();
+}
+
+function drawBoat(bx, ySurf, s) {
+  const by = ySurf + wave(bx + S.cam.x * s) - 2;
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.sin(t * 1.3) * .03);
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath(); ctx.moveTo(-2.2 * s, -.5 * s); ctx.lineTo(2.4 * s, -.5 * s); ctx.lineTo(1.8 * s, .35 * s); ctx.lineTo(-1.8 * s, .35 * s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#ef4444"; ctx.fillRect(-2.1 * s, -.2 * s, 4.4 * s, .14 * s);
+  ctx.fillStyle = "#e2e8f0"; ctx.fillRect(-1 * s, -1.2 * s, 1.6 * s, .7 * s);
+  ctx.fillStyle = "#38bdf8"; ctx.fillRect(-.8 * s, -1.05 * s, .5 * s, .35 * s); ctx.fillRect(-.1 * s, -1.05 * s, .5 * s, .35 * s);
+  ctx.strokeStyle = "#334155"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1.6 * s, -.5 * s); ctx.lineTo(1.6 * s, -2.1 * s); ctx.stroke();
+  ctx.fillStyle = "#dc2626"; ctx.fillRect(1.6 * s, -2.1 * s, .9 * s, .6 * s);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = .14 * s; ctx.beginPath(); ctx.moveTo(1.6 * s, -2.1 * s); ctx.lineTo(2.5 * s, -1.5 * s); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------- animals ---------- */
+function eye(x, y, r) {
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.fillStyle = "#0b0b0b"; ctx.beginPath(); ctx.arc(x + r * .2, y, r * .55, 0, 7); ctx.fill();
+}
+function tail(s, wag, col, notch) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-s * .8, 0);
+  ctx.lineTo(-s * 1.35, -s * .45 + wag);
+  if (notch) ctx.lineTo(-s * 1.15, wag); else ctx.quadraticCurveTo(-s * 1.45, wag, -s * 1.35, s * .45 + wag);
+  ctx.lineTo(-s * 1.35, s * .45 + wag); ctx.closePath(); ctx.fill();
+}
+const FISH_DRAW = {
+  clown(s, ph) {   // orange with three white bands edged in black
+    const wag = Math.sin(t * 10 + ph) * s * .18, lw = Math.max(1, s * .07);
+    ctx.strokeStyle = "#111"; ctx.lineWidth = lw; ctx.fillStyle = "#f97316";
+    ctx.beginPath(); ctx.moveTo(-s * .8, 0); ctx.quadraticCurveTo(-s * 1.3, -s * .6 + wag, -s * 1.35, -s * .3 + wag); ctx.lineTo(-s * 1.35, s * .3 + wag);
+    ctx.quadraticCurveTo(-s * 1.3, s * .6 + wag, -s * .8, 0); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-s * .45, -s * .38); ctx.quadraticCurveTo(0, -s * .8, s * .35, -s * .4); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * .5, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.fillStyle = "#fff";
+    for (const [bx, bw] of [[s * .5, s * .24], [-s * .08, s * .3], [-s * .68, s * .18]]) { ctx.beginPath(); ctx.ellipse(bx, 0, bw * .5, s * .62, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * .5, 0, 0, 7); ctx.stroke();
+    ctx.fillStyle = "#fb923c"; ctx.beginPath(); ctx.ellipse(s * .18, s * .2, s * .2, s * .1, .6 + Math.sin(t * 8 + ph) * .3, 0, 7); ctx.fill();
+    eye(s * .72, -s * .1, s * .12);
+  },
+  tang(s, ph) {   // royal blue, black swoosh, yellow tail
+    const wag = Math.sin(t * 9 + ph) * s * .15;
+    tail(s, wag, "#facc15", true);
+    ctx.fillStyle = "#2563eb"; ctx.beginPath(); ctx.ellipse(0, 0, s, s * .58, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.fillStyle = "#0b1020";
+    ctx.beginPath(); ctx.moveTo(s * .5, -s * .15); ctx.quadraticCurveTo(0, -s * .62, -s * .85, -s * .05); ctx.quadraticCurveTo(-s * .3, -s * .12, -s * .2, s * .12);
+    ctx.quadraticCurveTo(s * .1, -s * .25, s * .5, -s * .15); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(s * .15, s * .15, s * .16, s * .08, .5, 0, 7); ctx.fill();
+    eye(s * .7, -s * .12, s * .1);
+  },
+  butterfly(s, ph) {   // yellow disc, black eye bar, false eye spot, pointed snout
+    const wag = Math.sin(t * 9 + ph) * s * .12;
+    tail(s * .85, wag, "#facc15", false);
+    ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.moveTo(-s * .2, -s * .6); ctx.quadraticCurveTo(-s * .7, -s * .55, -s * .75, -s * .2); ctx.lineTo(-s * .3, -s * .3); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, s * .85, s * .7, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s * .75, -s * .08); ctx.lineTo(s * 1.08, 0); ctx.lineTo(s * .75, s * .08); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, s * .85, s * .7, 0, 0, 7); ctx.clip();
+    ctx.fillStyle = "#111"; ctx.fillRect(s * .42, -s, s * .14, s * 2);
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(-s * .42, -s * .18, s * .12, 0, 7); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * .49, -s * .12, s * .06, 0, 7); ctx.fill();
+  },
+  angel(s, ph) {   // dark blue with curved yellow stripes and long fins
+    const wag = Math.sin(t * 8 + ph) * s * .12;
+    tail(s * .9, wag, "#facc15", false);
+    ctx.fillStyle = "#1e3a8a";
+    ctx.beginPath(); ctx.moveTo(s * .1, -s * .55); ctx.quadraticCurveTo(-s * .6, -s * .9, -s * .95, -s * .55); ctx.lineTo(-s * .55, -s * .25); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s * .1, s * .55); ctx.quadraticCurveTo(-s * .6, s * .9, -s * .95, s * .55); ctx.lineTo(-s * .55, s * .25); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, s * .85, s * .62, 0, 0, 7); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = "#fde047"; ctx.lineWidth = Math.max(1, s * .06);
+    for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(-s, k * s * .17); ctx.quadraticCurveTo(0, k * s * .17 - s * .14, s * .5, k * s * .17); ctx.stroke(); }
+    ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.ellipse(s * .6, 0, s * .28, s * .5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#0b1020"; ctx.fillRect(s * .52, -s, s * .1, s * 2);
+    ctx.restore();
+    eye(s * .66, -s * .12, s * .09);
+  },
+  grouper(s, ph) {   // big, brown and spotted, slow
+    const wag = Math.sin(t * 5 + ph) * s * .1;
+    ctx.fillStyle = "#6b5440"; ctx.beginPath(); ctx.moveTo(-s * .8, 0); ctx.quadraticCurveTo(-s * 1.4, -s * .5 + wag, -s * 1.3, wag); ctx.quadraticCurveTo(-s * 1.4, s * .5 + wag, -s * .8, 0); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s * .4, -s * .4); ctx.lineTo(-s * .6, -s * .45); ctx.lineTo(-s * .5, -s * .25); ctx.fill();
+    const g = ctx.createLinearGradient(0, -s * .45, 0, s * .45); g.addColorStop(0, "#5b4636"); g.addColorStop(1, "#a08568");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, s, s * .45, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(40,28,20,.45)";
+    for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(-s * .6 + (i % 5) * s * .28, -s * .15 + Math.floor(i / 5) * s * .25, s * .06, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = "rgba(30,20,15,.8)"; ctx.lineWidth = Math.max(1, s * .04);
+    ctx.beginPath(); ctx.moveTo(s * .98, s * .05); ctx.quadraticCurveTo(s * .8, s * .2, s * .62, s * .12); ctx.stroke();
+    eye(s * .72, -s * .12, s * .07);
+  },
+};
+function drawFish(f, P) {
+  const bob = f.sp === "clown" ? 0 : Math.sin(t * 2 + f.ph) * 3;
+  const x = sx(f.x), y = sy(f.d) + bob, s = f.size * P;
+  if (x < -60 || x > W + 60 || y < -40 || y > H + 40) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(Math.sign(f.v) || 1, 1);
+  FISH_DRAW[f.sp](s, f.ph);
+  ctx.restore();
+}
+function drawSchool(sc, P) {
+  const s = .14 * P, dir = Math.sign(sc.v);
+  for (const m of sc.members) {
+    const x = sx(sc.x + m.ox + Math.sin(t * .9 + m.ph) * .3), y = sy(sc.d + m.od + Math.sin(t * 1.3 + m.ph) * .2);
+    if (x < -20 || x > W + 20 || y < -20 || y > H + 20) continue;
+    ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+    const wag = Math.sin(t * 14 + m.ph) * s * .2;
+    ctx.fillStyle = "#94a3b8"; ctx.beginPath(); ctx.moveTo(-s * .8, 0); ctx.lineTo(-s * 1.3, -s * .3 + wag); ctx.lineTo(-s * 1.3, s * .3 + wag); ctx.fill();
+    const g = ctx.createLinearGradient(0, -s * .25, 0, s * .25); g.addColorStop(0, "#1e40af"); g.addColorStop(.5, "#cbd5e1"); g.addColorStop(1, "#f8fafc");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, s, s * .26, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawShark(P) {
+  const sh = S.shark, x = sx(sh.x), y = sy(sh.d), s = 1.3 * P;
+  if (x < -3 * s || x > W + 3 * s || y < -s || y > H + s) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(sh.dir, 1); ctx.rotate(sh.tilt);
+  const wag = Math.sin(t * (sh.flee > 0 ? 9 : 4)) * s * .08;
+  ctx.fillStyle = "#566577";
+  ctx.beginPath(); ctx.moveTo(-s * .85, 0); ctx.lineTo(-s * 1.38, -s * .58 + wag); ctx.quadraticCurveTo(-s * 1.15, -s * .1 + wag, -s * 1.22, s * .32 + wag); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-s * .45, s * .14); ctx.lineTo(-s * .62, s * .3); ctx.lineTo(-s * .62, s * .12); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-s * .5, -s * .16); ctx.lineTo(-s * .66, -s * .3); ctx.lineTo(-s * .68, -s * .13); ctx.fill();
+  const g = ctx.createLinearGradient(0, -s * .3, 0, s * .25);
+  g.addColorStop(0, "#475569"); g.addColorStop(.55, "#64748b"); g.addColorStop(.62, "#d4dbe3"); g.addColorStop(1, "#eef2f6");
+  ctx.fillStyle = g; ctx.beginPath();
+  ctx.moveTo(s * 1.05, s * .02);
+  ctx.quadraticCurveTo(s * .85, -s * .28, s * .2, -s * .27);
+  ctx.quadraticCurveTo(-s * .5, -s * .24, -s * .95, -s * .04);
+  ctx.lineTo(-s * .95, s * .04);
+  ctx.quadraticCurveTo(-s * .4, s * .22, s * .3, s * .22);
+  ctx.quadraticCurveTo(s * .85, s * .2, s * 1.05, s * .02); ctx.fill();
+  ctx.fillStyle = "#475569";
+  ctx.beginPath(); ctx.moveTo(s * .25, -s * .25); ctx.quadraticCurveTo(s * .05, -s * .55, -s * .15, -s * .64); ctx.quadraticCurveTo(-s * .12, -s * .4, -s * .2, -s * .24); ctx.fill();
+  ctx.fillStyle = "#52606f";
+  ctx.beginPath(); ctx.moveTo(s * .4, s * .12); ctx.quadraticCurveTo(s * .1, s * .35, -s * .05, s * .5); ctx.quadraticCurveTo(s * .15, s * .25, s * .15, s * .12); ctx.fill();
+  ctx.strokeStyle = "rgba(30,41,59,.55)"; ctx.lineWidth = Math.max(1, s * .015);
+  for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.moveTo(s * (.58 - k * .05), -s * .1); ctx.quadraticCurveTo(s * (.55 - k * .05), 0, s * (.58 - k * .05), s * .1); ctx.stroke(); }
+  ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(s * .78, -s * .07, s * .035, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(15,23,42,.55)"; ctx.beginPath(); ctx.moveTo(s * .93, s * .1); ctx.quadraticCurveTo(s * .8, s * .17, s * .66, s * .13); ctx.stroke();
+  ctx.restore();
+}
+function drawCetacean(wx, wd, s, dir, ang, kind) {
+  const x = sx(wx), y = sy(wd);
+  if (x < -2 * s || x > W + 2 * s || y < -2 * s || y > H + 2 * s) return;
+  const orcaK = kind === "orca";
+  ctx.save(); ctx.translate(x, y); ctx.rotate(dir > 0 ? ang : -ang); ctx.scale(dir, 1);
+  const wag = Math.sin(t * (orcaK ? 3 : 6)) * s * .1, dark = orcaK ? "#0b0f14" : "#5b6b7d";
+  ctx.fillStyle = dark;   // flukes
+  ctx.beginPath(); ctx.moveTo(-s * .85, 0); ctx.quadraticCurveTo(-s * 1.05, -s * .3 + wag, -s * 1.28, -s * .3 + wag);
+  ctx.quadraticCurveTo(-s * 1.08, wag, -s * 1.28, s * .3 + wag); ctx.quadraticCurveTo(-s * 1.05, s * .3 + wag, -s * .85, 0); ctx.fill();
+  const g = ctx.createLinearGradient(0, -s * .3, 0, s * .22);
+  if (orcaK) { g.addColorStop(0, "#0b0f14"); g.addColorStop(1, "#111827"); }
+  else { g.addColorStop(0, "#4b5b6d"); g.addColorStop(.5, "#7d8da0"); g.addColorStop(.62, "#d6dee7"); g.addColorStop(1, "#eef2f6"); }
+  ctx.fillStyle = g; ctx.beginPath();
+  if (orcaK) { ctx.moveTo(s * 1.05, s * .04); ctx.quadraticCurveTo(s * 1.02, -s * .24, s * .55, -s * .27); }
+  else { ctx.moveTo(s * 1.12, s * .05); ctx.quadraticCurveTo(s * .95, -s * .03, s * .78, -s * .07); ctx.quadraticCurveTo(s * .62, -s * .3, s * .15, -s * .27); }
+  ctx.quadraticCurveTo(-s * .5, -s * .2, -s * .9, -s * .03); ctx.lineTo(-s * .9, s * .03);
+  ctx.quadraticCurveTo(-s * .4, s * .22, s * .2, s * .22); ctx.quadraticCurveTo(s * .75, s * .2, orcaK ? s * 1.05 : s * 1.12, s * .05); ctx.fill();
+  if (orcaK) {
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.ellipse(s * .35, s * .2, s * .55, s * .1, -.05, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-s * .45, s * .16, s * .25, s * .08, .2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s * .55, -s * .1, s * .14, s * .055, -.2, 0, 7); ctx.fill();   // eye patch
+    ctx.fillStyle = "rgba(160,170,185,.6)"; ctx.beginPath(); ctx.ellipse(-s * .25, -s * .22, s * .2, s * .07, 0, 0, 7); ctx.fill();   // saddle
+    ctx.restore();
+    ctx.fillStyle = "#0b0f14"; ctx.beginPath(); ctx.moveTo(s * .05, -s * .26); ctx.lineTo(-s * .05, -s * .9); ctx.lineTo(-s * .2, -s * .25); ctx.fill();
+  } else {
+    ctx.fillStyle = "#4b5b6d"; ctx.beginPath(); ctx.moveTo(s * .05, -s * .26); ctx.quadraticCurveTo(-s * .1, -s * .55, -s * .3, -s * .6); ctx.quadraticCurveTo(-s * .2, -s * .4, -s * .3, -s * .22); ctx.fill();
+    ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(s * .62, -s * .05, s * .03, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(15,23,42,.5)"; ctx.lineWidth = Math.max(1, s * .015); ctx.beginPath(); ctx.moveTo(s * 1.08, s * .06); ctx.quadraticCurveTo(s * .95, s * .1, s * .8, s * .05); ctx.stroke();
+  }
+  ctx.fillStyle = orcaK ? "#0b0f14" : "#5b6b7d";   // flipper
+  ctx.beginPath(); ctx.moveTo(s * .45, s * .14); ctx.quadraticCurveTo(s * .3, s * .38, s * .12, s * .42); ctx.quadraticCurveTo(s * .22, s * .22, s * .22, s * .14); ctx.fill();
+  ctx.restore();
+}
+function drawSplashes(P) {
+  ctx.fillStyle = "rgba(240,250,255,.9)";
+  for (const sp of splashes) {
+    const f = 1 - sp.life / .9, x = sx(sp.x), y = sy(0);
+    for (let k = 0; k < 10; k++) {
+      const a = -Math.PI / 2 + (k - 4.5) * .22, r = f * P * 1.4;
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r + f * f * P * 1.5, Math.max(1.5, P * .06 * (1 - f)), 0, 7); ctx.fill();
+    }
+  }
+}
+
+/* ---------- animal behaviour ---------- */
+function factOnce(key, msg) {
+  if (seen[key] || $("#toast").classList.contains("show")) return;
+  seen[key] = true; toast(msg, "", 4200);
+}
+function updateAnimals(dt) {
+  const near = (x, d, r) => Math.hypot(x - S.pos.x, d - S.pos.d) < r;
+  for (const f of fish) {
+    if (f.sp === "clown") {   // clownfish stay close to their anemone
+      const a = f.home, w = t * .6 + f.ph;
+      f.x = a.x + .7 * Math.sin(w); f.v = Math.cos(w) >= 0 ? 1 : -1; f.d = a.d - .75 + .3 * Math.sin(t * 1.1 + f.ph);
+      continue;
+    }
+    if (S.map === "ocean" && near(f.x, f.d, 2.5) && Math.sign(f.v) === Math.sign(S.pos.x - f.x)) f.v *= -1;   // swim away from the diver
+    f.x += f.v * dt;
+    if ((f.x > f.xb && f.v > 0) || (f.x < f.xa && f.v < 0) || inRock(f.x + Math.sign(f.v) * f.size, f.d)) { f.x -= f.v * dt; f.v *= -1; }
+    f.d = Math.min(f.d, bed(f.x) - .8);
+  }
+  for (const sc of schools) {
+    if (S.map === "ocean" && near(sc.x, sc.d, 4) && Math.sign(sc.v) === Math.sign(S.pos.x - sc.x)) sc.v *= -1;
+    sc.x += sc.v * dt;
+    if ((sc.x > sc.xb && sc.v > 0) || (sc.x < sc.xa && sc.v < 0) || inRock(sc.x + Math.sign(sc.v) * 3, sc.d)) { sc.x -= sc.v * dt; sc.v *= -1; }
+    sc.d = Math.min(sc.d, bed(sc.x) - 2);
+  }
+  orca.x += orca.v * dt; if ((orca.x > 430 && orca.v > 0) || (orca.x < 300 && orca.v < 0)) orca.v *= -1;
+  orca.d = 7 + 1.5 * Math.sin(t * .2);
+  // dolphins: a pod that stays near the dive site and sometimes jumps
+  if (S.map === "ocean") {
+    const st = M().start[0], x0 = st - 30, x1 = st + 50;
+    pod.cx += pod.dir * 4.5 * dt; if ((pod.cx > x1 && pod.dir > 0) || (pod.cx < x0 && pod.dir < 0)) pod.dir *= -1;
+    for (const m of pod.members) {
+      const prev = m.d ?? 1.6;
+      if (m.jump) {
+        m.jump.tau += dt; const f = m.jump.tau / m.jump.T;
+        if (f >= 1) { m.jump = null; m.next = rnd(4, 9); m.d = 1.6; }
+        else m.d = 1.6 - 4.4 * Math.sin(Math.PI * f);
+      } else {
+        m.next -= dt; m.d = 1.6 + m.od + .5 * Math.sin(t * 1.3 + m.ph);
+        if (m.next <= 0) m.jump = { tau: 0, T: 1.5 };
+      }
+      if ((prev > 0) !== (m.d > 0)) splashes.push({ x: pod.cx + m.ox, life: .9 });
+      m.vy = (m.d - prev) / Math.max(dt, 1e-3);
+    }
+  }
+  for (const sp of splashes) sp.life -= dt;
+  splashes = splashes.filter(sp => sp.life > 0);
+  // the shark patrols, warns, and turns away. It never hurts the diver.
+  const sh = S.shark;
+  if (sh) {
+    const p = sh.path;
+    if (sh.flee > 0) { sh.flee -= dt; sh.x += sh.dir * 3.5 * dt; }
+    else { sh.x += sh.dir * 1.5 * dt; if ((sh.x > p.x1 && sh.dir > 0) || (sh.x < p.x0 && sh.dir < 0)) sh.dir *= -1; }
+    const dT = (p.d0 + p.d1) / 2 + (p.d1 - p.d0) / 2 * Math.sin(t * .15 + 1);
+    sh.d += (dT - sh.d) * Math.min(1, dt * .5); sh.tilt = clamp((dT - sh.d) * .06, -.15, .15);
+    if (S.vehicle === "diver" && S.map === "ocean") {
+      const dx = S.pos.x - sh.x, dd = S.pos.d - sh.d, dist = Math.hypot(dx, dd);
+      if (dist < 10 && t - (S.sharkWarn ?? -99) > 15) { S.sharkWarn = t; toast("🦈 Careful, a shark! Keep your distance. Sharks rarely attack people, but give them space.", "warn", 4200); }
+      if (dist < 3.2) {
+        S.vel.x += dx / (dist || 1) * 6; S.vel.d += dd / (dist || 1) * 6; S.target = null;
+        if (sh.flee <= 0) { sh.flee = 3; sh.dir = dx > 0 ? -1 : 1; }
+        if (t - (S.sharkPush ?? -99) > 4) { S.sharkPush = t; toast("🦈 Too close! The shark swims away. Move back slowly.", "danger", 3000); }
+      }
+    }
+  }
+  // one-time facts
+  if (S.map === "ocean") {
+    if (pod.members.some(m => near(pod.cx + m.ox, m.d, 14))) factOnce("dolphin", "🐬 Dolphins! They breathe air, so they live near the surface.");
+    if (near(orca.x, orca.d, 25)) factOnce("orca", "🐋 An orca (killer whale): the biggest member of the dolphin family.");
+    if (near(whale.x, whale.d, 45)) factOnce("whale", "🐋 A sperm whale! It holds its breath and dives deeper than 1000 m to hunt squid.");
+    if (fish.some(f => f.sp === "clown" && near(f.x, f.d, 5))) factOnce("clown", "🐠 Clownfish live safely inside sea anemones. The anemone's stinging tentacles protect them.");
+  }
+}
+function drawWhale(P) {
+  const x = sx(whale.x), y = sy(whale.d), s = P * 6, dir = Math.sign(whale.v);
+  if (y < -s || y > H + s) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1); ctx.fillStyle = "rgba(51,65,85,.9)";
+  ctx.beginPath(); ctx.moveTo(s * 1.2, -s * .25); ctx.quadraticCurveTo(s * 1.3, s * .3, s * .6, s * .3);
+  ctx.quadraticCurveTo(-s * .6, s * .3, -s * 1.2, 0); ctx.lineTo(-s * 1.6, -s * .3 + Math.sin(t * 2) * s * .1);
+  ctx.lineTo(-s * 1.55, s * .15); ctx.lineTo(-s * 1.2, 0); ctx.quadraticCurveTo(-s * .2, -s * .4, s * 1.2, -s * .25); ctx.fill();
+  ctx.fillStyle = "#e2e8f0"; ctx.beginPath(); ctx.arc(s * .9, 0, s * .04, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function drawJelly(j, P) {
+  const y = sy(j.d); if (y < -60 || y > H + 80) return;
+  const x = sx(j.x), s = j.size * P * .5, pulse = 1 + .12 * Math.sin(t * 2.4 + j.ph);
+  ctx.fillStyle = `hsla(${j.hue},90%,75%,.5)`;
+  ctx.beginPath(); ctx.ellipse(x, y, s * pulse, s * .7 / pulse, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = `hsla(${j.hue},90%,80%,.45)`; ctx.lineWidth = 1.5;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.moveTo(x + i * s * .3, y);
+    for (let k = 1; k <= 6; k++) ctx.lineTo(x + i * s * .3 + Math.sin(t * 3 + k + i) * 3, y + k * s * .35);
+    ctx.stroke();
+  }
+}
+function drawJellyGlow(j, P) {
+  const x = sx(j.x), y = sy(j.d), s = j.size * P * .5; if (y < -60 || y > H + 60) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(x, y, 0, x, y, s * 2.5);
+  g.addColorStop(0, `hsla(${j.hue},95%,70%,.45)`); g.addColorStop(1, `hsla(${j.hue},95%,60%,0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s * 2.5, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawAngler(a, P) {
+  const x = sx(a.x), y = sy(a.d), s = P * 1.2, dir = Math.sign(a.v); if (y < -50 || y > H + 50) return;
+  ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1); ctx.fillStyle = "#1c1917";
+  ctx.beginPath(); ctx.ellipse(0, 0, s, s * .7, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-s * .9, 0); ctx.lineTo(-s * 1.5, -s * .5); ctx.lineTo(-s * 1.5, s * .5); ctx.fill();
+  ctx.fillStyle = "#e7e5e4";
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(s * (.4 + i * .12), s * .15); ctx.lineTo(s * (.46 + i * .12), s * .35); ctx.lineTo(s * (.52 + i * .12), s * .15); ctx.fill(); }
+  ctx.strokeStyle = "#44403c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s * .3, -s * .6); ctx.quadraticCurveTo(s * .9, -s * 1.4, s * 1.25, -s * .8); ctx.stroke();
+  ctx.restore();
+}
+function drawLure(a, P) {
+  const s = P * 1.2, dir = Math.sign(a.v), x = sx(a.x) + dir * s * 1.25, y = sy(a.d) - s * .8; if (y < -50 || y > H + 50) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(x, y, 0, x, y, 30 + 6 * Math.sin(t * 3 + a.ph));
+  g.addColorStop(0, "rgba(190,255,250,.95)"); g.addColorStop(1, "rgba(80,255,220,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 36, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawVent(P) {
+  const vx = 362, x = sx(vx), y = sy(1500); if (y < -100 || y > H + 300 || x < -200 || x > W + 200) return;
+  ctx.fillStyle = "#292524"; ctx.beginPath(); ctx.moveTo(x - 3 * P, y + 2); ctx.lineTo(x - P, y - 6 * P); ctx.lineTo(x + P, y - 6 * P); ctx.lineTo(x + 3 * P, y + 2); ctx.fill();
+  for (let i = 0; i < 14; i++) {
+    const f = ((t * .25 + i / 14) % 1);
+    ctx.fillStyle = `rgba(120,113,108,${.5 * (1 - f)})`;
+    ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + t) * f * 3 * P, y - 6 * P - f * 25 * P, (1 + f * 4) * P, 0, 7); ctx.fill();
+  }
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(x, y - 6 * P, 0, x, y - 6 * P, 4 * P); g.addColorStop(0, "rgba(255,120,40,.6)"); g.addColorStop(1, "rgba(255,80,0,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 6 * P, 4 * P, 0, 7); ctx.fill(); ctx.restore();
+}
+function drawStations(P) {
+  for (const s of STATIONS) {
+    const x = sx(s.x), y = sy(s.d), r = 1.5 * P, got = S.data.some(d => d.tag === s.k);
+    const col = got ? "74,222,128" : "34,211,238";
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(x, y, r * .3, x, y, r * 1.6);
+    g.addColorStop(0, `rgba(${col},.25)`); g.addColorStop(1, `rgba(${col},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.fill(); ctx.restore();
+    ctx.strokeStyle = `rgba(${col},${.6 + .3 * Math.sin(t * 3)})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+    ctx.fillStyle = `rgb(${col})`; ctx.font = `800 ${Math.max(14, P * .7)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillText(got ? `${s.k} ✓` : s.k, x, y - r - 4);
+  }
+  // arrow to the next station when it is off screen
+  const next = STATIONS.find(s => !S.data.some(d => d.tag === s.k));
+  if (next) {
+    const x = sx(next.x);
+    if (x > W - 20 || x < 80) {
+      const right = x > W - 20, ax = right ? W - 250 : 90, ay = H * .5;
+      ctx.fillStyle = "rgba(34,211,238,.9)"; ctx.font = "800 15px system-ui"; ctx.textAlign = right ? "right" : "left"; ctx.textBaseline = "middle";
+      ctx.fillText(right ? `Station ${next.k} ➜` : `⬅ Station ${next.k}`, ax, ay);
+    }
+  }
+}
+function drawBeacon(P) {
+  const pr = S.rescue.probe, x = sx(pr.x), y = sy(pr.d);
+  if (Math.hypot(pr.x - S.pos.x, pr.d - S.pos.d) > 70) return;
+  ctx.fillStyle = "#f97316"; ctx.beginPath(); ctx.roundRect(x - P * 1.2, y - P * .6, P * 2.4, P * 1.2, P * .4); ctx.fill();
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const blink = (Math.sin(t * 8) > 0) ? .9 : .2;
+  const g = ctx.createRadialGradient(x, y - P * .7, 0, x, y - P * .7, P * 2); g.addColorStop(0, `rgba(255,60,60,${blink})`); g.addColorStop(1, "rgba(255,0,0,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - P * .7, P * 2, 0, 7); ctx.fill(); ctx.restore();
+  const ring = (t % 1.5) / 1.5;
+  ctx.strokeStyle = `rgba(255,120,80,${1 - ring})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, P * (1 + ring * 6), 0, 7); ctx.stroke();
+}
+
+function drawDiver(x, y, s, tilt, kick) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt * S.facing); ctx.scale(S.facing * s, s);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const leg = (ph, col, finCol) => {
+    const hip = [-.36, .04], knee = [-.7, .05 + ph * .22], ank = [-1.0, .05 + ph * .42];
+    ctx.strokeStyle = col; ctx.lineWidth = .13;
+    ctx.beginPath(); ctx.moveTo(...hip); ctx.lineTo(...knee); ctx.lineTo(...ank); ctx.stroke();
+    ctx.fillStyle = finCol; ctx.beginPath();
+    ctx.moveTo(ank[0] + .04, ank[1] - .05); ctx.lineTo(ank[0] - .42, ank[1] - .13 + ph * .35);
+    ctx.lineTo(ank[0] - .42, ank[1] + .11 + ph * .35); ctx.lineTo(ank[0] + .04, ank[1] + .05); ctx.closePath(); ctx.fill();
+  };
+  const p1 = Math.sin(t * kick) * .5, p2 = Math.sin(t * kick + Math.PI) * .5;
+  leg(p2, "#0b1220", "#0e7490");
+  ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.roundRect(-.44, -.33, .66, .17, .08); ctx.fill();
+  ctx.fillStyle = "#ca8a04"; ctx.fillRect(-.3, -.33, .05, .17); ctx.fillRect(.02, -.33, .05, .17);
+  ctx.fillStyle = "#94a3b8"; ctx.fillRect(.22, -.29, .07, .09);
+  ctx.fillStyle = "#1e293b"; ctx.beginPath(); ctx.ellipse(0, 0, .45, .16, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#22d3ee"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(-.35, .02); ctx.quadraticCurveTo(0, -.06, .38, .02); ctx.stroke();
+  leg(p1, "#1e293b", "#22d3ee");
+  ctx.strokeStyle = "#0f172a"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(.27, -.25); ctx.quadraticCurveTo(.55, -.3, .66, .03); ctx.stroke();
+  ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(.54, -.03, .13, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f97316"; ctx.beginPath(); ctx.roundRect(.57, -.11, .12, .11, .03); ctx.fill();
+  const vg = ctx.createLinearGradient(.59, -.1, .67, -.01); vg.addColorStop(0, "#a5f3fc"); vg.addColorStop(1, "#0891b2");
+  ctx.fillStyle = vg; ctx.beginPath(); ctx.roundRect(.59, -.095, .085, .08, .02); ctx.fill();
+  ctx.fillStyle = "#64748b"; ctx.beginPath(); ctx.arc(.66, .04, .035, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#1e293b"; ctx.lineWidth = .1;
+  ctx.beginPath(); ctx.moveTo(.3, .04); ctx.lineTo(.42, .19); ctx.lineTo(.56, .21); ctx.stroke();
+  ctx.fillStyle = "#e2e8f0"; ctx.beginPath(); ctx.arc(.63, .21, .055, 0, 7); ctx.fill();
+  ctx.restore();
+}
+function drawDrone(x, y, len, dark) {
+  const f = S.facing;
+  if (dark > .05) { // headlights
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(x + f * len * .5, y, 0, x + f * len * .5, y, len * 4);
+    g.addColorStop(0, "rgba(255,250,210,.35)"); g.addColorStop(1, "rgba(255,250,210,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x + f * len * .5, y);
+    ctx.lineTo(x + f * len * 4.5, y - len * 1.3); ctx.lineTo(x + f * len * 4.5, y + len * 1.6); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  ctx.save(); ctx.translate(x, y); ctx.scale(f, 1); const s = len;
+  const frac = S.hull ? pAbsKPa(S.pos.d) / S.hull : 0;
+  ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.roundRect(-s * .5, -s * .2, s, s * .4, s * .18); ctx.fill();
+  ctx.fillStyle = "#ea580c"; ctx.fillRect(-s * .5, -s * .03, s, s * .06);
+  ctx.fillStyle = "#334155"; ctx.fillRect(-s * .62, -s * .12, s * .13, s * .24);
+  ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(s * .28, -s * .02, s * .13, 0, 7); ctx.fill();
+  ctx.fillStyle = "#67e8f9"; ctx.beginPath(); ctx.arc(s * .3, -s * .04, s * .09, 0, 7); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * .48, s * .1, s * .04, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#475569"; ctx.lineWidth = 2; // robot arm
+  ctx.beginPath(); ctx.moveTo(s * .1, s * .2); ctx.lineTo(s * .3, s * .32); ctx.lineTo(s * .45, s * .28); ctx.stroke();
+  const spin = Math.sin(t * 30) * s * .1;
+  ctx.fillStyle = "#94a3b8"; ctx.fillRect(-s * .66, -spin, s * .04, spin * 2 || 1);
+  if (frac > .85) { // cracks
+    ctx.strokeStyle = "rgba(127,29,29,.9)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-s * .2, -s * .2); ctx.lineTo(-s * .1, -s * .05); ctx.lineTo(-s * .18, s * .05); ctx.lineTo(-s * .05, s * .18); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawTank() {
+  const pl = PLANETS[S.planet], lq = LIQUIDS[S.liquid], P = ppm();
+  const g = ctx.createLinearGradient(0, 0, 0, sy(13));
+  g.addColorStop(0, pl.sky[0]); g.addColorStop(1, pl.sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (pl.stars) { ctx.fillStyle = "#fff"; for (let i = 0; i < 80; i++) { ctx.globalAlpha = .3 + .7 * ((i * 37) % 10) / 10; ctx.fillRect((i * 997) % W, (i * 613) % (H * .8), 1.5, 1.5); } ctx.globalAlpha = 1; }
+  if (pl.name === "Earth") { ctx.fillStyle = "rgba(255,255,255,.7)"; for (const c of clouds.slice(0, 3)) { ctx.beginPath(); ctx.ellipse(((c.x * 4 + t * 8) % (W + 200)) - 100, H * c.y * .3, 60, 16, 0, 0, 7); ctx.fill(); } }
+  if (pl.name === "Super-Earth") { ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.arc(W * .8, H * .12, 26, 0, 7); ctx.fill(); }
+  if (pl.name === "Moon") { ctx.fillStyle = "#60a5fa"; ctx.beginPath(); ctx.arc(W * .8, H * .14, 22, 0, 7); ctx.fill(); ctx.fillStyle = "#4ade80"; ctx.beginPath(); ctx.arc(W * .8 - 6, H * .14 - 4, 9, 0, 7); ctx.fill(); }
+  // ground
+  ctx.fillStyle = pl.ground; ctx.fillRect(0, sy(12.6), W, H);
+  const tw = 4 * P, left = sx(-4), right = sx(4), top = sy(-1.2), y0 = sy(0), y1 = sy(12);
+  // stand
+  ctx.fillStyle = "#334155"; ctx.fillRect(left - 10, y1, tw * 2 + 20, sy(12.6) - y1);
+  // liquid
+  const lg = ctx.createLinearGradient(0, y0, 0, y1);
+  lg.addColorStop(0, lq.col); lg.addColorStop(1, mix(lq.col, "#000000", .45));
+  ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(left, y1);
+  for (let x = left; x <= right; x += 6) ctx.lineTo(x, y0 + Math.sin(x * .05 + t * 2) * 1.5);
+  ctx.lineTo(right, y1); ctx.closePath(); ctx.fill();
+  // glass
+  ctx.fillStyle = "rgba(186,230,253,.08)"; ctx.fillRect(left, top, right - left, y1 - top);
+  ctx.strokeStyle = "rgba(226,232,240,.9)"; ctx.lineWidth = 4; ctx.strokeRect(left, top, right - left, y1 - top);
+  ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(left + 8, top + 6, 6, y1 - top - 12);
+  // 10 m line
+  const y10 = sy(10);
+  ctx.strokeStyle = `rgba(250,204,21,${.6 + .3 * Math.sin(t * 3)})`; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+  ctx.beginPath(); ctx.moveTo(left, y10); ctx.lineTo(right, y10); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "#fde047"; ctx.font = "800 13px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.fillText("10 m test line", right + 10, y10);
+  // label plate
+  ctx.fillStyle = "rgba(4,17,31,.75)"; ctx.beginPath(); ctx.roundRect(left + 18, y0 + 14, 210, 58, 10); ctx.fill();
+  ctx.fillStyle = "#e6f1ff"; ctx.font = "800 14px system-ui";
+  ctx.fillText(`${lq.name}: ρ = ${lq.rho} kg/m³`, left + 30, y0 + 33);
+  ctx.fillText(`${pl.name}: g = ${pl.g} N/kg`, left + 30, y0 + 55);
+  // crane and probe
+  const py = sy(S.pos.d), px = sx(0);
+  ctx.fillStyle = "#64748b"; ctx.fillRect(left - 20, top - 16, tw * 2 + 40, 10);
+  ctx.fillStyle = "#475569"; ctx.fillRect(px - 16, top - 26, 32, 20);
+  ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, top - 6); ctx.lineTo(px, py - 18); ctx.stroke();
+  ctx.fillStyle = "#e2e8f0"; ctx.beginPath(); ctx.roundRect(px - 12, py - 18, 24, 30, 8); ctx.fill();
+  ctx.fillStyle = "#f97316"; ctx.beginPath(); ctx.arc(px, py + 12, 7, 0, 7); ctx.fill();
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const gg = ctx.createRadialGradient(px, py, 0, px, py, 30); gg.addColorStop(0, "rgba(250,204,21,.45)"); gg.addColorStop(1, "rgba(250,204,21,0)");
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(px, py, 30, 0, 7); ctx.fill(); ctx.restore();
+}
+
+function niceStep(range, n = 5) {
+  const raw = range / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * mag + 1e-12) return m * mag;
+  return 10 * mag;
+}
+const niceCeil = (v, n = 5) => { const s = niceStep(v, n); return Math.ceil(v / s - 1e-9) * s; };
+
+function drawRuler() {
+  const RW = 64, P = ppm();
+  ctx.fillStyle = "rgba(2,8,18,.6)"; ctx.fillRect(0, 0, RW, H);
+  const d0 = S.cam.d, d1 = S.cam.d + S.view;
+  // coloured zone strip
+  if (S.map === "ocean" && S.vehicle === "diver") {
+    let from = 0;
+    for (const z of ZONES) { ctx.fillStyle = z.col; ctx.globalAlpha = .75; ctx.fillRect(RW - 5, sy(from), 5, sy(Math.min(z.to, 60)) - sy(from)); from = z.to; }
+    ctx.globalAlpha = 1;
+    const yl = sy(HUMAN_LIMIT);
+    if (yl > 0 && yl < H) {
+      ctx.fillStyle = "rgba(127,29,29,.55)"; ctx.fillRect(RW, yl, W - RW, H - yl);
+      ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.moveTo(RW, yl); ctx.lineTo(W, yl); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "#fecaca"; ctx.font = "800 14px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      ctx.fillText("⛔ 60 m: NO HUMAN DIVER BELOW THIS LINE", RW + 12, yl + 6);
+    }
+  }
+  if (S.map === "ocean" && S.vehicle === "drone") {
+    ctx.font = "800 12px system-ui"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    for (const [dd, name] of [[0, "☀️ SUNLIGHT ZONE"], [200, "🌒 TWILIGHT ZONE"], [1000, "🌑 MIDNIGHT ZONE"]]) {
+      const y = sy(dd); if (y < -20 || y > H) continue;
+      ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(226,232,240,.8)"; ctx.fillText(name, RW + 10, y + 6);
+    }
+  }
+  const major = niceStep(S.view, 3.2), minor = major / 5;
+  ctx.font = "600 11px system-ui"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const top = S.map === "tank" ? 12 : 1e9;
+  for (let d = Math.max(0, Math.ceil(d0 / minor) * minor); d <= Math.min(d1, top); d += minor) {
+    const y = Math.round(sy(d)) + .5, isMaj = Math.abs(d / major - Math.round(d / major)) < 1e-6;
+    ctx.strokeStyle = isMaj ? "rgba(255,255,255,.9)" : "rgba(255,255,255,.4)"; ctx.lineWidth = isMaj ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(RW - 6, y); ctx.lineTo(RW - 6 - (isMaj ? 16 : 8), y); ctx.stroke();
+    if (isMaj) { ctx.fillStyle = "#e6f1ff"; ctx.fillText(`${+d.toFixed(1)} m`, RW - 26, y); }
+  }
+  // readings
+  if (M().data === "depth") for (const r of S.data) {
+    const y = sy(r.h); if (y < 0 || y > H) continue;
+    ctx.fillStyle = r === S.lastRec ? "#fde047" : "rgba(250,204,21,.75)";
+    ctx.beginPath(); ctx.moveTo(RW + 2, y); ctx.lineTo(RW + 8, y - 5); ctx.lineTo(RW + 14, y); ctx.lineTo(RW + 8, y + 5); ctx.closePath(); ctx.fill();
+  }
+  const y = sy(S.pos.d);
+  ctx.fillStyle = "#22d3ee"; ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(RW + 11, y - 7); ctx.lineTo(RW + 11, y + 7); ctx.closePath(); ctx.fill();
+}
+
+/* =====================================================================
+   HUD
+   ===================================================================== */
+let needle = 0;
+function drawDial(value, max, redFrom) {
+  const r = dial.getBoundingClientRect(), w = r.width, h = r.height;
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 3;
+  dctx.clearRect(0, 0, w, h);
+  const a0 = Math.PI * .75, a1 = Math.PI * 2.25;
+  const bg = dctx.createRadialGradient(cx, cy - R * .3, R * .1, cx, cy, R); bg.addColorStop(0, "#1e3a5f"); bg.addColorStop(1, "#071426");
+  dctx.fillStyle = bg; dctx.beginPath(); dctx.arc(cx, cy, R, 0, 7); dctx.fill(); dctx.strokeStyle = "#94a3b8"; dctx.lineWidth = 3; dctx.stroke();
+  if (redFrom < 1) { dctx.strokeStyle = "rgba(248,113,113,.85)"; dctx.lineWidth = 5; dctx.beginPath(); dctx.arc(cx, cy, R - 7, a0 + (a1 - a0) * redFrom, a1); dctx.stroke(); }
+  const stp = niceStep(max, 5);
+  dctx.fillStyle = "#cbd5e1"; dctx.font = `600 ${Math.max(8, R * .14)}px system-ui`; dctx.textAlign = "center"; dctx.textBaseline = "middle";
+  for (let v = 0; v <= max + 1e-9; v += stp / 2) {
+    const a = a0 + (a1 - a0) * v / max, isMaj = Math.abs(v / stp - Math.round(v / stp)) < 1e-6;
+    dctx.strokeStyle = isMaj ? "#e2e8f0" : "#64748b"; dctx.lineWidth = isMaj ? 2 : 1;
+    dctx.beginPath(); dctx.moveTo(cx + Math.cos(a) * (R - 4), cy + Math.sin(a) * (R - 4)); dctx.lineTo(cx + Math.cos(a) * (R - (isMaj ? 13 : 9)), cy + Math.sin(a) * (R - (isMaj ? 13 : 9))); dctx.stroke();
+    if (isMaj) dctx.fillText(v >= 1e4 ? v / 1000 + "k" : v, cx + Math.cos(a) * (R - 24), cy + Math.sin(a) * (R - 24));
+  }
+  needle += (clamp(value / max, 0, 1.02) - needle) * .2;
+  const a = a0 + (a1 - a0) * needle;
+  dctx.strokeStyle = "#f87171"; dctx.lineWidth = 3;
+  dctx.beginPath(); dctx.moveTo(cx - Math.cos(a) * 8, cy - Math.sin(a) * 8); dctx.lineTo(cx + Math.cos(a) * (R - 14), cy + Math.sin(a) * (R - 14)); dctx.stroke();
+  dctx.fillStyle = "#e2e8f0"; dctx.beginPath(); dctx.arc(cx, cy, 5, 0, 7); dctx.fill();
+  dctx.fillStyle = "#94a3b8"; dctx.font = `700 ${Math.max(8, R * .13)}px system-ui`; dctx.fillText("kPa", cx, cy + R * .45);
+}
+let hudKey = "";
+function updateHud() {
+  const p = pNow();
+  let max, red = 1;
+  if (S.map === "tank") max = 300;
+  else if (S.vehicle === "diver") { max = 800; red = pAbsKPa(40) / 800; }
+  else { max = niceCeil(S.hull * 1.15); red = S.hull / max; }
+  drawDial(p, max, red);
+  const key = [fmtD(S.pos.d), p.toFixed(1), S.map, S.vehicle, S.zone, S.liquid, S.planet, S.hull, Math.round(S.pos.d / 50)].join("|");
+  if (key === hudKey) return;
+  hudKey = key;
+  $("#depthOut").textContent = fmtD(S.pos.d);
+  $("#pOut").textContent = p >= 10000 ? Math.round(p) : p.toFixed(1);
+  $("#pLabel").textContent = gaugeMode() ? "EXTRA P" : "PRESSURE";
+  const z = $("#zone"), hb = $("#hullBar");
+  if (S.map === "tank") { z.textContent = `${LIQUIDS[S.liquid].name} · ${PLANETS[S.planet].name}`; z.style.color = "#e6f1ff"; hb.hidden = true; }
+  else if (S.vehicle === "diver") { const zz = ZONES[Math.max(0, S.zone)]; z.textContent = zz.name; z.style.color = zz.col; hb.hidden = true; }
+  else {
+    z.textContent = OCEAN_ZONES.find(o => S.pos.d < o.to).name; z.style.color = "#e6f1ff";
+    hb.hidden = !S.hull;
+    const frac = S.hull ? pAbsKPa(S.pos.d) / S.hull : 0;
+    hb.firstElementChild.style.width = clamp(frac, 0, 1) * 100 + "%";
+    hb.firstElementChild.style.background = frac > .85 ? "var(--bad)" : frac > .6 ? "var(--orange)" : "var(--good)";
+  }
+}
+
+let toastTimer;
+function toast(msg, kind = "", ms = 2600) {
+  const el = $("#toast"); el.textContent = msg; el.className = "toast glass show " + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), ms);
+}
+function celebrate() {
+  const cols = ["#facc15", "#22d3ee", "#a78bfa", "#4ade80", "#f472b6", "#fb923c"];
+  for (let i = 0; i < 160; i++) confetti.push({ x: W / 2, y: H * .35, vx: rnd(-380, 380), vy: rnd(-520, -120), rot: rnd(0, 6), vr: rnd(-10, 10), life: rnd(1.6, 2.8), col: cols[i % 6] });
+}
+
+/* =====================================================================
+   Data table and graph
+   ===================================================================== */
+const DATA_CFG = {
+  depth: { title: "Your data: pressure and depth", cols: ["#", "Depth h (m)", "Pressure P (kPa)", ""],
+    row: (r, i) => [i + 1, r.h.toFixed(1), r.p.toFixed(1)], x: r => r.h, xLabel: "Depth h (m)", yLabel: "Pressure P (kPa)",
+    xMax: () => niceCeil(Math.max(40, ...S.data.map(r => r.h))), yMax: () => niceCeil(Math.max(500, ...S.data.map(r => r.p))) },
+  stations: { title: "Your data: the three stations", cols: ["Station", "Depth h (m)", "Pressure P (kPa)"], row: r => [r.label, r.h.toFixed(1), r.p.toFixed(1)] },
+  liquid: { title: "Your data: different liquids (10 m)", cols: ["Liquid", "Density ρ (kg/m³)", "Extra P (kPa)"],
+    row: r => [r.label, r.xv, r.p.toFixed(1)], x: r => r.xv, xLabel: "Density ρ (kg/m³)", yLabel: "Extra P (kPa)", xMax: () => 1600, yMax: () => 160 },
+  planet: { title: "Your data: different worlds (10 m)", cols: ["World", "Gravity g (N/kg)", "Extra P (kPa)"],
+    row: r => [r.label, r.xv, r.p.toFixed(1)], x: r => r.xv, xLabel: "Gravity g (N/kg)", yLabel: "Extra P (kPa)", xMax: () => 22, yMax: () => 220 },
+};
+function renderData() {
+  const m = M(), cfg = DATA_CFG[m.data], card = $("#dataCard");
+  card.hidden = !cfg || !recordOpen();
+  updateRecordBtn();
+  if (card.hidden) return;
+  $("#dataTitle").textContent = cfg.title;
+  $("#thead").innerHTML = `<tr>${cfg.cols.map(c => `<th>${c}</th>`).join("")}</tr>`;
+  const tb = $("#tbody");
+  if (!S.data.length) tb.innerHTML = `<tr><td colspan="${cfg.cols.length}" class="empty">No readings yet. Press <b>📍 Record</b> in the game.</td></tr>`;
+  else tb.innerHTML = S.data.map((r, i) => `<tr class="${r === S.lastRec ? "new" : ""}">${cfg.row(r, i).map(c => `<td>${c}</td>`).join("")}${m.data === "depth" ? `<td class="del"><button type="button" data-i="${i}" aria-label="Delete">×</button></td>` : ""}</tr>`).join("");
+  tb.querySelectorAll("button[data-i]").forEach(b => b.addEventListener("click", () => { S.data.splice(+b.dataset.i, 1); S.lastRec = null; renderData(); }));
+  graph.style.display = cfg.x ? "block" : "none";
+  if (cfg.x) { fitCanvas(graph, gctx); drawGraph(); }
+}
+function drawGraph() {
+  drawGraphOn(graph, gctx);
+  const mg = $("#miniGraph");
+  if (mg) { const mc = mg.getContext("2d"); fitCanvas(mg, mc); drawGraphOn(mg, mc); }
+}
+function miniTable() {
+  const m = M(), cfg = DATA_CFG[m.data];
+  if (!cfg) return "";
+  return `<div class="tablewrap"><table><thead><tr>${cfg.cols.filter(c => c).map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${
+    S.data.length ? S.data.map((r, i) => `<tr>${cfg.row(r, i).map(c => `<td>${c}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="3" class="empty">No readings.</td></tr>`}</tbody></table></div>`;
+}
+function drawGraphOn(graph, gctx) {
+  const cfg = DATA_CFG[M().data];
+  if (!cfg || !cfg.x) return;
+  const r = graph.getBoundingClientRect(), w = r.width, h = r.height; if (!w) return;
+  gctx.clearRect(0, 0, w, h);
+  const L = 50, R = 14, T = 12, B = 36, pw = w - L - R, ph = h - T - B;
+  const xMax = cfg.xMax(), yMax = cfg.yMax();
+  const X = v => L + v / xMax * pw, Y = v => T + ph - v / yMax * ph;
+  gctx.font = "11px system-ui"; gctx.fillStyle = "#8fb0d4"; gctx.lineWidth = 1;
+  const xs = niceStep(xMax, 6), ys = niceStep(yMax, 5);
+  gctx.textAlign = "center"; gctx.textBaseline = "top";
+  for (let v = 0; v <= xMax + 1e-9; v += xs) { gctx.strokeStyle = "rgba(143,176,212,.15)"; gctx.beginPath(); gctx.moveTo(X(v), T); gctx.lineTo(X(v), T + ph); gctx.stroke(); gctx.fillText(+v.toFixed(2), X(v), T + ph + 5); }
+  gctx.textAlign = "right"; gctx.textBaseline = "middle";
+  for (let v = 0; v <= yMax + 1e-9; v += ys) { gctx.strokeStyle = "rgba(143,176,212,.15)"; gctx.beginPath(); gctx.moveTo(L, Y(v)); gctx.lineTo(L + pw, Y(v)); gctx.stroke(); gctx.fillText(v, L - 6, Y(v)); }
+  gctx.strokeStyle = "#8fb0d4"; gctx.lineWidth = 1.5; gctx.beginPath(); gctx.moveTo(L, T); gctx.lineTo(L, T + ph); gctx.lineTo(L + pw, T + ph); gctx.stroke();
+  gctx.fillStyle = "#cbd5e1"; gctx.textAlign = "center"; gctx.textBaseline = "bottom"; gctx.fillText(cfg.xLabel, L + pw / 2, h - 2);
+  gctx.save(); gctx.translate(12, T + ph / 2); gctx.rotate(-Math.PI / 2); gctx.textBaseline = "middle"; gctx.fillText(cfg.yLabel, 0, 0); gctx.restore();
+  const pts = S.data.map(d => [cfg.x(d), d.p]);
+  if (S.flags.fit && pts.length >= 2) {
+    const n = pts.length, sxv = pts.reduce((a, p) => a + p[0], 0), syv = pts.reduce((a, p) => a + p[1], 0);
+    const sxx = pts.reduce((a, p) => a + p[0] * p[0], 0), sxy = pts.reduce((a, p) => a + p[0] * p[1], 0), den = n * sxx - sxv * sxv;
+    if (Math.abs(den) > 1e-9) {
+      const m = (n * sxy - sxv * syv) / den, c = (syv - m * sxv) / n;
+      gctx.save(); gctx.beginPath(); gctx.rect(L, T, pw, ph); gctx.clip();
+      gctx.strokeStyle = "#facc15"; gctx.setLineDash([6, 5]); gctx.lineWidth = 2;
+      gctx.beginPath(); gctx.moveTo(X(0), Y(c)); gctx.lineTo(X(xMax), Y(c + m * xMax)); gctx.stroke(); gctx.restore();
+    }
+  }
+  for (const d of S.data) {
+    gctx.fillStyle = d === S.lastRec ? "#fde047" : "#22d3ee";
+    gctx.beginPath(); gctx.arc(X(cfg.x(d)), Y(d.p), 4.5, 0, 7); gctx.fill();
+  }
+}
+
+/* =====================================================================
+   Mission engine
+   ===================================================================== */
+const optLabel = o => typeof o === "string" ? o : o.label;
+const svgShape = k => `<svg width="62" height="40" viewBox="0 0 62 40" aria-hidden="true"><path d="M4 2 V36 H60" fill="none" stroke="#8fb0d4" stroke-width="2"/><path d="${SHAPES[k]}" fill="none" stroke="#facc15" stroke-width="3" stroke-linecap="round"/></svg>`;
+function note(id, q, a, correct) {
+  const n = S.save.notes[M().id] ||= { qa: {} };
+  const prev = n.qa[id];
+  n.qa[id] = { q: q.replace(/<[^>]+>/g, ""), a: String(a).replace(/<[^>]+>/g, ""), correct, tries: (prev && prev.final === false ? prev.tries : 0) + 1, final: correct !== false };
+  persist();
+}
+function echo(id) {
+  const n = S.save.notes[M().id];
+  const a = n && n.qa[id] ? n.qa[id].a : null;
+  return a ? `<br><i>Your prediction was: “${a}”.</i>` : "";
+}
+
+function startMission(i) {
+  S.mi = i; S.si = 0; S.done = false;
+  const m = M();
+  S.data = []; S.lastRec = null; S.flags = {}; S.rescue = null; S.hull = 0; S.crushed = 0; debris = [];
+  if (m.id === 7) newRescue();
+  S.map = m.map; S.vehicle = m.vehicle || "diver"; S.view = 16;
+  const sp = SHARK_PATHS[m.id];
+  S.shark = sp ? { path: { x0: sp[0], x1: sp[1], d0: sp[2], d1: sp[3] }, x: sp[1], d: (sp[2] + sp[3]) / 2, dir: -1, flee: 0, tilt: 0 } : null;
+  pod.cx = m.start[0] + 25;
+  if (m.map === "tank") { S.liquid = m.tank === "liquid" ? 0 : 1; S.planet = m.tank === "planet" ? 0 : 2; }
+  place(m.start);
+  S.save.notes[m.id] ||= { qa: {} };
+  $("#stage").classList.toggle("tankmode", m.map === "tank");
+  $("#timer").hidden = true; $("#signal").hidden = true;
+  $("#chip").textContent = `${m.icon} Mission ${m.id}: ${m.title}`;
+  $("#mtitle").textContent = `${m.icon} Mission ${m.id} · ${m.title}`;
+  renderTankBar(); renderMap(); renderBoard(); renderData(); startStep();
+}
+function startStep() {
+  S.token++; S.ui = { tries: 0, hints: 0 };
+  const st = step();
+  if (st.vehicle && st.vehicle !== S.vehicle) { S.vehicle = st.vehicle; place([282, 0]); toast("🤖 Drone launched! Use the same controls. Hold Shift to go slowly.", "good"); }
+  if (st.hull) S.hull = st.hull;
+  st.onStart?.();
+  renderData();
+  renderStep();
+}
+const val = v => typeof v === "function" ? v() : v;
+function nextStep() {
+  if (S.si < M().steps.length - 1) { S.si++; startStep(); }
+  else completeMission();
+}
+function completeMission() {
+  const m = M();
+  S.done = true;
+  if (!S.save.done.includes(m.id)) S.save.done.push(m.id);
+  if (!S.save.clues.includes(m.clue)) S.save.clues.push(m.clue);
+  S.save.unlocked = Math.max(S.save.unlocked, Math.min(MISSIONS.length, S.mi + 2));
+  const cfg = DATA_CFG[m.data];
+  if (cfg) S.save.notes[m.id].table = { cols: cfg.cols.filter(Boolean).filter(c => c !== ""), rows: S.data.map((r, i) => cfg.row(r, i)) };
+  persist(); celebrate(); renderMap(); renderBoard(); renderStep();
+}
+
+function renderMap() {
+  const box = $("#mmap"); box.innerHTML = "";
+  MISSIONS.forEach((m, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "mbtn" + (S.save.done.includes(m.id) ? " done" : "") + (i === S.mi ? " cur" : "");
+    b.disabled = i + 1 > S.save.unlocked; b.innerHTML = `${m.icon}<small>${m.id}</small>`;
+    b.title = `Mission ${m.id}: ${m.title}${b.disabled ? " (locked)" : ""}`;
+    b.addEventListener("click", () => {
+      if (i === S.mi && !S.done) return;
+      if (!S.done && S.si > 0 && !confirm(`Leave this mission and go to Mission ${m.id}? This mission will start again later.`)) return;
+      startMission(i);
+    });
+    box.appendChild(b);
+  });
+}
+function renderBoard() {
+  const has = k => S.save.clues.includes(k), cracked = has("code");
+  const slot = (k, word, sym) => cracked ? `<span class="slot on">${sym}</span>` : has(k) ? `<span class="slot on word">${word}</span>` : `<span class="slot">?</span>`;
+  const b = $("#board"); b.classList.toggle("cracked", cracked);
+  b.innerHTML = `<h2>${cracked ? "🔓 Code cracked!" : "🔐 The pressure code"}</h2>
+    <div class="formula">P = ${slot("air", "air pressure", "P<sub>air</sub>")} + ${slot("rho", "density", "ρ")} × ${slot("g", "gravity", "g")} × ${slot("h", "depth", "h")}</div>
+    <div class="clues">${CLUES.filter(c => has(c.k)).map(c => `<div class="clue">${c.icon} ${c.text}</div>`).join("") || `<div class="clue" style="opacity:.7">Complete missions to find the missing pieces.</div>`}</div>`;
+}
+function renderTankBar() {
+  const m = M(), bar = $("#tankbar");
+  bar.hidden = m.map !== "tank";
+  if (bar.hidden) return;
+  const list = m.tank === "liquid" ? LIQUIDS : PLANETS;
+  const cur = m.tank === "liquid" ? S.liquid : S.planet;
+  bar.innerHTML = list.map((it, i) => `<button type="button" data-i="${i}" class="${i === cur ? "on" : ""}">${it.name}${S.data.some(r => r.tag === it.name) ? ' <span class="ok">✓</span>' : ""}</button>`).join("");
+  bar.querySelectorAll("button").forEach(btn => btn.addEventListener("click", () => {
+    if (m.tank === "liquid") S.liquid = +btn.dataset.i; else S.planet = +btn.dataset.i;
+    renderTankBar(); btn.blur();
+  }));
+}
+
+function renderStep() {
+  const m = M(), card = $("#stepCard"), n = m.steps.length;
+  if (S.done) {
+    const clue = CLUES.find(c => c.k === m.clue), next = MISSIONS[S.mi + 1];
+    card.innerHTML = `<div class="txt"><p style="font-size:1.3rem;font-weight:800">🎉 Mission ${m.id} complete!</p>
+      <p>New clue for the code board:</p><div class="clue">${clue.icon} ${clue.text}</div></div>
+      ${next ? `<button type="button" class="btn primary big" id="go">Mission ${next.id}: ${next.title} ▶</button>`
+        : `<p class="txt" style="margin-top:10px">🏆 You finished every mission! Open <b>My lab notebook</b> to see everything you discovered, then print it or save it as a PDF.</p>
+           <button type="button" class="btn primary big" id="nb2">📓 Open my lab notebook</button>`}`;
+    $("#go")?.addEventListener("click", () => startMission(S.mi + 1));
+    $("#nb2")?.addEventListener("click", openNotebook);
+    return;
+  }
+  const st = step();
+  let html = `<div class="stephead"><span>Step ${S.si + 1} of ${n}</span><div class="bar"><i style="width:${S.si / n * 100}%"></i></div></div>`;
+  if (st.part) html += `<div class="part">PART ${st.part} OF D · ${m.parts[st.part]}</div><br>`;
+  const look = st.look ? `<div class="look"><div class="lookhead">${st.look === "graph" ? "📈 YOUR GRAPH" : "📋 YOUR DATA TABLE"}</div>${st.look === "graph" ? `<canvas id="miniGraph"></canvas>` : miniTable()}</div>` : "";
+  if (st.type === "info") html += `<div class="txt">${val(st.html)}</div><button type="button" class="btn primary big" id="go">Continue ▶</button>`;
+  else if (st.type === "choice") {
+    html += `<span class="tag ${st.pred ? "pred" : ""}">${st.pred ? "🔮 Prediction" : "❓ Question"}</span><div class="q">${st.q}</div>${look}
+      <div class="opts">${st.opts.map((o, i) => `<button type="button" class="opt" data-i="${i}">${o.svg ? svgShape(o.svg) : ""}<span>${optLabel(o)}</span></button>`).join("")}</div><div class="fb" id="fb"></div>`;
+  } else if (st.type === "number") {
+    html += `<span class="tag">🧮 Calculate</span><div class="q">${val(st.q)}</div>${look}
+      <div class="numrow"><input id="num" inputmode="decimal" autocomplete="off" aria-label="Your answer"><b>${st.unit}</b><button type="button" class="btn primary" id="chk">Check</button></div>
+      <div class="fb" id="fb"></div><div class="hints" id="hints"></div>
+      <button type="button" class="btn hintbtn" id="hintBtn">💡 Show a hint</button>`;
+  } else if (st.type === "task") {
+    html += `<span class="tag task">🎮 Task</span><div class="txt">${st.text}</div><div class="prog" id="prog"></div><div class="fb" id="fb"></div>`;
+  } else if (st.type === "builder") html += builderHTML();
+  else if (st.type === "rescue") html += rescueHTML();
+  card.innerHTML = html;
+
+  $("#go")?.addEventListener("click", nextStep);
+  if (st.type === "choice") card.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => choose(+b.dataset.i)));
+  if (st.type === "number") {
+    $("#chk").addEventListener("click", checkNumber);
+    $("#num").addEventListener("keydown", e => { if (e.key === "Enter") checkNumber(); });
+    $("#hintBtn").addEventListener("click", showHint);
+    renderHints();
+  }
+  if ($("#miniGraph")) drawGraph();
+  if (st.type === "builder") wireBuilder();
+  if (st.type === "rescue") wireRescue();
+}
+function continueBtn() { return `<button type="button" class="btn primary big" id="go2">Continue ▶</button>`; }
+function wireContinue() { $("#go2")?.addEventListener("click", nextStep); $("#go2")?.focus({ preventScroll: true }); }
+
+function choose(i) {
+  const st = step(); if (S.ui.locked) return;
+  const btns = [...document.querySelectorAll(".opt")], fb = $("#fb");
+  const label = optLabel(st.opts[i]);
+  if (st.pred) {
+    S.ui.locked = true; note(st.id, st.q, label, null);
+    btns.forEach((b, j) => { b.disabled = true; if (j === i) b.classList.add("sel"); });
+    fb.innerHTML = `<div class="info">📝 Prediction saved. Now let's find out!</div>${continueBtn()}`; wireContinue();
+  } else if (i === st.correct) {
+    S.ui.locked = true; note(st.id, st.q, label, true);
+    btns.forEach((b, j) => { b.disabled = true; if (j === i) b.classList.add("right"); });
+    const ex = typeof st.explain === "function" ? st.explain() : st.explain;
+    fb.innerHTML = `<div class="good">✅ ${ex}</div>${continueBtn()}`; wireContinue();
+  } else {
+    note(st.id, st.q, label, false);
+    btns[i].classList.add("wrong"); btns[i].disabled = true;
+    fb.innerHTML = `<div class="bad">❌ Not quite. ${st.hint || "Try another answer."}</div>`;
+  }
+}
+function parseNum(s) {
+  s = String(s).trim().replace(/[\s  ]/g, "");
+  if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, "");
+  else s = s.replace(",", ".");
+  return s === "" ? NaN : Number(s);
+}
+const hintList = st => val(st.hints) || [];
+function renderHints() {
+  const st = step(), list = hintList(st), box = $("#hints"), btn = $("#hintBtn");
+  if (!box) return;
+  box.innerHTML = list.slice(0, S.ui.hints).map((h, i) => `<div class="hintbox">💡 <b>Hint ${i + 1}:</b> ${h}</div>`).join("");
+  btn.hidden = S.ui.locked || S.ui.hints >= list.length;
+  btn.textContent = S.ui.hints ? `💡 Next hint (${S.ui.hints + 1} of ${list.length})` : `💡 Show a hint`;
+}
+function showHint() { const st = step(); if (S.ui.hints < hintList(st).length) S.ui.hints++; renderHints(); }
+function checkNumber() {
+  const st = step(); if (S.ui.locked) return;
+  const v = parseNum($("#num").value), fb = $("#fb");
+  if (!isFinite(v)) { fb.innerHTML = `<div class="bad">Type a number first.</div>`; return; }
+  S.ui.tries++;
+  if (st.check(v)) {
+    S.ui.locked = true; note(st.id, val(st.q), `${v} ${st.unit}`, true); $("#num").disabled = true; $("#chk").disabled = true;
+    fb.innerHTML = `<div class="good">✅ ${val(st.explain)}</div>${continueBtn()}`; renderHints(); wireContinue();
+  } else {
+    note(st.id, val(st.q), `${v} ${st.unit}`, false);
+    const more = S.ui.hints < hintList(st).length;
+    fb.innerHTML = `<div class="bad">❌ Not yet. Check your calculation${more ? " and look at the hint below 💡" : ""}.</div>`;
+    if (more) showHint();
+  }
+}
+
+/* tasks and the rescue run inside the game loop */
+function stepTick(dt) {
+  if (S.done) return;
+  const st = step();
+  if (st.type === "task" && !S.ui.locked) {
+    const p = st.progress ? st.progress() : "";
+    const el = $("#prog"); if (el && p !== S.ui.prog) { el.innerHTML = p; S.ui.prog = p; }
+    if (st.done()) {
+      S.ui.locked = true; st.onDone?.();
+      const tok = S.token;
+      $("#fb").innerHTML = `<div class="good">✅ ${st.success || "Task complete!"}</div>`;
+      toast("✅ " + (st.success || "Task complete!"), "good");
+      setTimeout(() => { if (S.token === tok) nextStep(); }, 1500);
+    }
+  }
+  if (st.type === "rescue" && S.rescue && S.rescue.running) {
+    const r = S.rescue; r.left -= dt;
+    const tm = $("#timer"); tm.hidden = false; tm.textContent = `⏱ ${Math.max(0, Math.ceil(r.left))} s`; tm.classList.toggle("low", r.left < 15);
+    const sg = $("#signal"), dx = r.probe.x - S.pos.x;
+    sg.hidden = false; sg.textContent = Math.abs(dx) < 6 ? "📡 Signal: right here! Check your depth" : `📡 Signal: ${dx > 0 ? "east ➜" : "⬅ west"}`;
+    if (Math.hypot(dx, r.probe.d - S.pos.d) < 4 && !S.crushed) endRescue(true);
+    else if (r.left <= 0) endRescue(false);
+  }
+}
+
+/* builder (Mission 6) */
+function builderHTML() {
+  S.ui.slots = S.ui.slots || [null, null, null];
+  if (!S.ui.order) {   // shuffle the tiles, never with ρ, g, h together at the start
+    do { S.ui.order = BUILD_TILES.map(tl => [Math.random(), tl]).sort((a, b) => a[0] - b[0]).map(a => a[1]); }
+    while (S.ui.order.slice(0, 3).every(tl => ["rho", "g", "h"].includes(tl.k)) || S.ui.order.slice(3).every(tl => ["rho", "g", "h"].includes(tl.k)));
+  }
+  return `<div class="builder"><span class="tag">🔧 Build the formula</span>
+    <div class="q">The <b>extra pressure</b> from a liquid (gauge pressure) depends on three things. Click the 3 tiles that belong in the formula.</div>
+    <div class="slots">P<sub>gauge</sub> = ${S.ui.slots.map((k, i) => `<button type="button" class="bslot ${k ? "filled" : ""}" data-s="${i}">${k ? BUILD_TILES.find(t => t.k === k).sym : ""}</button>${i < 2 ? " × " : ""}`).join("")}</div>
+    <div class="tiles">${S.ui.order.map(tl => `<button type="button" class="tile" data-k="${tl.k}" ${S.ui.slots.includes(tl.k) ? "disabled" : ""}><b>${tl.sym}</b>${tl.name}</button>`).join("")}</div>
+    <button type="button" class="btn primary big" id="bchk">Check my formula</button><div class="fb" id="fb"></div></div>`;
+}
+function wireBuilder() {
+  const card = $("#stepCard");
+  card.querySelectorAll(".tile").forEach(b => b.addEventListener("click", () => {
+    if (S.ui.locked) return;
+    const i = S.ui.slots.indexOf(null); if (i < 0) return;
+    S.ui.slots[i] = b.dataset.k; refreshBuilder();
+  }));
+  card.querySelectorAll(".bslot").forEach(b => b.addEventListener("click", () => { if (S.ui.locked) return; S.ui.slots[+b.dataset.s] = null; refreshBuilder(); }));
+  $("#bchk").addEventListener("click", () => {
+    if (S.ui.locked) return;
+    const fb = $("#fb"), sl = S.ui.slots;
+    if (sl.includes(null)) { fb.innerHTML = `<div class="bad">Fill all 3 boxes first.</div>`; return; }
+    const wrong = sl.find(k => !["rho", "g", "h"].includes(k));
+    const formula = sl.map(k => BUILD_TILES.find(t => t.k === k).sym).join(" × ");
+    if (!wrong) {
+      S.ui.locked = true; note("m6build", "Build the formula for the extra pressure", `P_gauge = ${formula}`, true);
+      fb.innerHTML = `<div class="good">✅ Yes! Depth (Mission 2), density (Mission 4) and gravity (Mission 5).<div class="eqbox">P<sub>gauge</sub> = ρ g h</div>(The order of the letters doesn't matter when you multiply.)</div>${continueBtn()}`;
+      wireContinue();
+    } else {
+      note("m6build", "Build the formula for the extra pressure", `P_gauge = ${formula}`, false);
+      fb.innerHTML = `<div class="bad">❌ Check <b>${BUILD_TILES.find(t => t.k === wrong).sym}</b> (${BUILD_TILES.find(t => t.k === wrong).name}). ${BUILD_TILES.find(t => t.k === wrong).why}</div>`;
+    }
+  });
+}
+function refreshBuilder() { const fbHTML = $("#fb")?.innerHTML || ""; renderStep(); $("#fb").innerHTML = fbHTML; }
+
+/* rescue (Mission 7). The probe is chosen when the mission starts; Part C calculates its depth first. */
+function rescueHTML() {
+  const r = S.rescue, d = r.probe.d.toFixed(0);
+  if (r.result === "win") return `<span class="tag task">⏱ Rescue</span><div class="fb"><div class="good">🎉 Probe rescued with ${Math.ceil(r.left)} s left! It was at ${d} m, just as you calculated.</div></div>${continueBtn()}`;
+  if (r.running) return `<span class="tag task">⏱ Rescue in progress</span><div class="txt"><p>1. Dive straight down to about <b>${d} m</b>.</p><p>2. Follow the 📡 signal at the top of the screen (east or west).</p><p>3. Touch the orange probe 🟠 to rescue it.</p></div>`;
+  return `<span class="tag task">⏱ Rescue</span>
+    <div class="txt"><p>You calculated that the probe 🟠 is at about <b>${d} m</b>.</p>
+    <p>When you press <b>Start</b>, you have <b>90 seconds</b>: dive to ${d} m with your drone 🟡, then follow the 📡 signal (east or west) until you touch the probe.</p></div>
+    ${r.result === "fail" ? `<div class="fb"><div class="bad">⏰ Time's up! The probe is still waiting in the same place. Try again: go straight down to ${d} m first, then follow the signal.</div></div>` : ""}
+    <button type="button" class="btn primary big" id="rgo">▶ Start the 90 s rescue</button>`;
+}
+function newRescue() {
+  const P = [1500, 2000, 2500, 3000, 3500, 4000][Math.floor(Math.random() * 6)];
+  const d = (P - OCEAN.patm) * 1000 / (OCEAN.rho * OCEAN.g);
+  S.rescue = { probe: { P, d, x: rnd(300, 390) }, left: 90, running: false, result: null };
+}
+function wireRescue() {
+  if (S.rescue.result === "win") { wireContinue(); return; }
+  $("#rgo")?.addEventListener("click", () => {
+    if (S.rescue.running) return;
+    Object.assign(S.rescue, { running: true, left: 90, result: null });
+    place([282, 0]); renderStep(); toast("⏱ Go! Dive down and follow the signal.", "warn");
+  });
+}
+function endRescue(win) {
+  const r = S.rescue; r.running = false; $("#timer").hidden = true; $("#signal").hidden = true;
+  if (win) {
+    r.result = "win"; note("m7rescue", "Timed rescue", `Found the probe at ${r.probe.d.toFixed(0)} m (${r.probe.P} kPa)`, true);
+    celebrate(); toast("🎉 Probe rescued!", "good");
+  } else {
+    r.result = "fail"; place([282, 0]);
+    toast("⏰ Time's up! Your drone is back at the surface. Try again.", "danger", 4000);
+  }
+  renderStep();
+}
+
+/* =====================================================================
+   Notebook
+   ===================================================================== */
+function openNotebook() {
+  const nb = $("#nbBody");
+  const esc = v => String(v || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let html = `<h1>📓 Lab notebook: Crack the Pressure Code</h1><p class="meta">Name: <b>${esc(S.save.name) || "______________________"}</b> &nbsp; Class: <b>${esc(S.save.cls) || "________"}</b> &nbsp; Date: ${new Date().toLocaleDateString()}</p>`;
+  html += `<h3>The code I found</h3><p style="font-size:1.2rem;font-weight:800">${S.save.clues.includes("code") ? "P = P<sub>air</sub> + ρ g h" : "Not cracked yet: keep going!"}</p>`;
+  html += S.save.clues.length ? `<div class="clues">${CLUES.filter(c => S.save.clues.includes(c.k)).map(c => `<div class="clue">${c.icon} ${c.text}</div>`).join("")}</div>` : "";
+  for (const m of MISSIONS) {
+    const n = S.save.notes[m.id]; if (!n || !Object.keys(n.qa).length) continue;
+    html += `<h3>${m.icon} Mission ${m.id}: ${m.title} ${S.save.done.includes(m.id) ? "✅" : "(not finished)"}</h3>`;
+    for (const k in n.qa) {
+      const e = n.qa[k];
+      const tag = e.correct === null ? "🔮 Prediction" : e.correct ? (e.tries > 1 ? `✅ (after ${e.tries} tries)` : "✅") : "❌ (not solved yet)";
+      html += `<p class="qa"><i>${e.q}</i><br><b>${e.a}</b> ${tag}</p>`;
+    }
+    if (n.table && n.table.rows.length) html += `<table><thead><tr>${n.table.cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${n.table.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  }
+  html += `<h3>✍️ Reflection</h3><p class="qa">1. Which of your predictions was wrong? What did you learn from it?</p><div class="lines"></div><div class="lines"></div>
+    <p class="qa">2. Explain in your own words why a submarine needs a stronger hull to go deeper.</p><div class="lines"></div><div class="lines"></div>`;
+  nb.innerHTML = html;
+  $("#notebook").hidden = false;
+}
+$("#nbBtn").addEventListener("click", openNotebook);
+$("#nbClose").addEventListener("click", () => { $("#notebook").hidden = true; });
+$("#printBtn").addEventListener("click", () => window.print());
+
+/* name prompt */
+function showWho() { $("#who").textContent = S.save.name ? `🤿 ${S.save.name}` : ""; }
+function askName() {
+  $("#welcome").hidden = false;
+  $("#nameIn").value = S.save.name || ""; $("#classIn").value = S.save.cls || "";
+  setTimeout(() => $("#nameIn").focus(), 50);
+}
+function saveName() {
+  const n = $("#nameIn").value.trim();
+  if (!n) { $("#nameErr").textContent = "Please type your name."; $("#nameIn").focus(); return; }
+  S.save.name = n; S.save.cls = $("#classIn").value.trim(); persist();
+  $("#welcome").hidden = true; showWho();
+}
+$("#nameGo").addEventListener("click", saveName);
+["#nameIn", "#classIn"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") saveName(); }));
+$("#who").addEventListener("click", askName);
+
+/* =====================================================================
+   Go
+   ===================================================================== */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt;
+  update(dt);
+  if (W && H) drawScene();
+  updateHud();
+  requestAnimationFrame(frame);
+}
+restore();
+resize();
+startMission(Math.max(0, Math.min(MISSIONS.length - 1, S.save.unlocked - 1)));
+showWho();
+if (!S.save.name) askName();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

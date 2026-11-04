@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Dive Pressure Lab</title>
+<!--
+  Deep Dive · Pressure Lab (Cesar, 2026-11-03).
+  Inspired by the Physics Aviary "Deep Sea Diver Lab". One offline file: no network,
+  no libraries, nothing saved (a reload clears everything).
+  Students swim a diver to any depth, read the pressure gauge, log (h, P) pairs and
+  graph them. Model: P = P_atm + rho * g * h. Six dive sites, two of them "mystery"
+  sites where rho (or g and P_atm) are hidden and must be found from the graph.
+-->
+<style>
+  :root {
+    --bg: #04111f; --panel: #0a1b30; --card: #0f2542; --card2: #12305a; --line: #1f3d63;
+    --ink: #e6f1ff; --muted: #8fb0d4; --accent: #22d3ee; --accent-soft: rgba(34,211,238,.14);
+    --gold: #facc15; --good: #4ade80; --bad: #f87171; --warn: #fbbf24; --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  button, select, input { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 410px; height: 100vh; }
+  .stage { position: relative; overflow: hidden; min-height: 0; user-select: none; -webkit-user-select: none; }
+  #scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: ns-resize; }
+
+  /* ---------- HUD on top of the scene ---------- */
+  .glass { background: rgba(4, 17, 31, .58); border: 1px solid rgba(148, 197, 255, .22);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+  .hud-top { position: absolute; top: 12px; left: 76px; right: 12px; display: flex; gap: 10px;
+    align-items: center; pointer-events: none; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+  .brand .logo { font-size: 1.6rem; }
+  .brand b { display: block; font-size: 1.05rem; letter-spacing: .04em; }
+  .brand small { color: var(--accent); font-weight: 700; letter-spacing: .18em; font-size: .68rem; text-transform: uppercase; }
+  .chip { padding: 8px 14px; font-weight: 700; font-size: .9rem; }
+  .stars { margin-left: auto; padding: 8px 14px; font-weight: 800; color: var(--gold); }
+
+  .instruments { position: absolute; top: 76px; right: 12px; width: 210px; padding: 12px; display: flex;
+    flex-direction: column; align-items: center; gap: 8px; }
+  .readout { width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+    background: rgba(0,0,0,.35); border-radius: 10px; padding: 6px 10px; }
+  .readout label { font-size: .66rem; letter-spacing: .16em; color: var(--muted); font-weight: 700; }
+  .digits { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 1.55rem; font-weight: 700;
+    color: #67e8f9; text-shadow: 0 0 12px rgba(34,211,238,.6); margin-left: auto; }
+  .readout .u { color: var(--muted); font-weight: 700; font-size: .85rem; min-width: 30px; }
+  .readout.p .digits { color: #fde68a; text-shadow: 0 0 12px rgba(250,204,21,.55); }
+  #dial { width: 160px; height: 160px; display: block; }
+  .seg { display: flex; width: 100%; background: rgba(0,0,0,.35); border-radius: 10px; padding: 3px; }
+  .seg button { flex: 1; border: 0; background: none; padding: 6px 4px; border-radius: 8px; cursor: pointer;
+    font-weight: 700; font-size: .78rem; color: var(--muted); }
+  .seg button.on { background: var(--accent); color: #04111f; }
+  .unitrow { width: 100%; display: flex; gap: 6px; align-items: center; font-size: .78rem; color: var(--muted); }
+  .unitrow select { flex: 1; background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+
+  .controls { position: absolute; left: 80px; bottom: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .ctl { width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(103,232,249,.6);
+    background: rgba(4,17,31,.6); font-size: 1.5rem; cursor: pointer; color: #a5f3fc;
+    box-shadow: 0 0 18px rgba(34,211,238,.25); touch-action: none; }
+  .ctl:active, .ctl.held { background: var(--accent); color: #04111f; }
+  .record { position: absolute; right: 18px; bottom: 18px; border: 0; border-radius: 999px; padding: 16px 24px;
+    font-weight: 800; font-size: 1.05rem; cursor: pointer; color: #1a1300;
+    background: linear-gradient(135deg, #fde047, #f59e0b); box-shadow: 0 6px 24px rgba(245,158,11,.45); }
+  .record:hover { filter: brightness(1.08); }
+  .record:active { transform: scale(.97); }
+  kbd { font-family: ui-monospace, Menlo, monospace; font-size: .72em; padding: 1px 6px; border-radius: 5px;
+    background: rgba(0,0,0,.18); border: 1px solid rgba(0,0,0,.25); }
+  .hint { position: absolute; left: 160px; bottom: 26px; right: 260px; font-size: .78rem; color: rgba(230,241,255,.75);
+    text-shadow: 0 1px 4px #000; pointer-events: none; }
+  .toast { position: absolute; left: 50%; top: 84px; transform: translate(-50%, -10px); opacity: 0;
+    transition: opacity .25s, transform .25s; padding: 10px 18px; font-weight: 700; pointer-events: none;
+    max-width: min(80%, 520px); text-align: center; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.good { border-color: rgba(74,222,128,.7); color: #bbf7d0; }
+  .toast.warn { border-color: rgba(251,191,36,.7); color: #fde68a; }
+
+  /* ---------- side panel ---------- */
+  .panel { overflow-y: auto; background: linear-gradient(180deg, #0a1b30, #071426); border-left: 1px solid var(--line);
+    padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .sites { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .site { border: 1px solid var(--line); background: var(--card2); border-radius: 12px; padding: 8px 4px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .74rem; font-weight: 700; text-align: center; }
+  .site .ic { font-size: 1.4rem; }
+  .site.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .site.mys { border-style: dashed; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: 12px; font-size: .88rem; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; font-weight: 700; text-align: right; }
+  .q { color: var(--violet); font-weight: 800; }
+  .found { color: var(--good); }
+  .eq { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .86rem; line-height: 1.7; overflow-x: auto; }
+  .eq .big { font-size: 1.15rem; color: #fff; font-weight: 700; }
+  .eq .v { color: #67e8f9; } .eq .p { color: #fde68a; } .eq .dim { color: var(--muted); }
+  .note { font-size: .8rem; color: var(--muted); margin: 8px 0 0; line-height: 1.4; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); background: var(--card2); border-radius: 9px; padding: 6px 12px; cursor: pointer; font-size: .82rem; font-weight: 700; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #04111f; border-color: var(--accent); }
+  .tablewrap { max-height: 230px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--card2); font-size: .74rem; color: var(--muted); }
+  td:first-child, th:first-child { text-align: center; color: var(--muted); width: 34px; }
+  td.del { width: 30px; text-align: center; }
+  td.del button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; }
+  td.del button:hover { color: var(--bad); }
+  tr.new td { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(250,204,21,.35); } to { background: transparent; } }
+  .empty { padding: 18px; text-align: center; color: var(--muted); font-size: .85rem; }
+  #graph { width: 100%; height: 250px; display: block; background: rgba(0,0,0,.25); border-radius: 10px; }
+  .fit { font-family: ui-monospace, Menlo, monospace; font-size: .82rem; color: #fde68a; margin-top: 6px; min-height: 1.2em; }
+  label.check { display: flex; gap: 6px; align-items: center; font-size: .84rem; cursor: pointer; }
+  .challenge { border-color: rgba(167,139,250,.6); background: linear-gradient(180deg, rgba(167,139,250,.12), var(--card)); }
+  .challenge h2 { color: var(--violet); }
+  .target { display: grid; grid-template-columns: 1fr 96px auto; gap: 6px; align-items: center; margin-top: 8px; font-size: .86rem; }
+  .target input { width: 100%; background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; text-align: right; }
+  .target .msg { grid-column: 1 / -1; font-size: .8rem; min-height: 1em; }
+  .msg.good { color: var(--good); } .msg.bad { color: var(--bad); }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; height: auto; }
+    .stage { height: 72vh; min-height: 460px; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .hud-top { left: 66px; top: 8px; }
+    .brand small, .brand b, .hint { display: none; }
+    .hud-top { flex-wrap: nowrap; right: 8px; }
+    .brand, .chip, .stars { padding: 6px 10px; }
+    .instruments { width: 150px; top: 62px; right: 8px; padding: 8px; gap: 6px; }
+    #dial { width: 112px; height: 112px; }
+    .digits { font-size: 1.15rem; }
+    .controls { left: 70px; bottom: 12px; }
+    .ctl { width: 54px; height: 54px; }
+    .record { right: 10px; bottom: 12px; padding: 12px 16px; font-size: .92rem; }
+    .record kbd { display: none; }
+    .toast { top: auto; bottom: 84px; left: 56%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="scene" aria-label="Underwater scene with a diver. Use the arrow keys or the up and down buttons to change depth."></canvas>
+
+    <div class="hud-top">
+      <div class="brand glass"><span class="logo">🤿</span><div><b>DEEP DIVE</b><small>Pressure Lab</small></div></div>
+      <div class="chip glass" id="siteChip"></div>
+      <a class="chip glass" href="inquiry.html" style="pointer-events:auto;color:inherit;text-decoration:none">🔐 Inquiry missions</a>
+      <div class="stars glass" title="Stars earned by solving mystery dives">⭐ <span id="stars">0</span></div>
+    </div>
+
+    <div class="instruments glass" aria-live="off">
+      <div class="readout"><label>DEPTH</label><span class="digits" id="depthOut">0.0</span><span class="u">m</span></div>
+      <canvas id="dial" aria-hidden="true"></canvas>
+      <div class="readout p"><label id="pLabel">P<sub>abs</sub></label><span class="digits" id="pOut">0</span><span class="u" id="pUnitOut">kPa</span></div>
+      <div class="seg" role="group" aria-label="Pressure type">
+        <button type="button" data-mode="abs" class="on">Absolute</button>
+        <button type="button" data-mode="gauge">Gauge</button>
+      </div>
+      <div class="unitrow"><span>Units</span>
+        <select id="unit" aria-label="Pressure unit">
+          <option value="kPa">kPa</option><option value="Pa">Pa</option>
+          <option value="atm">atm</option><option value="bar">bar</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button type="button" class="ctl" id="upBtn" aria-label="Swim up">▲</button>
+      <button type="button" class="ctl" id="downBtn" aria-label="Swim down">▼</button>
+    </div>
+    <div class="hint">↑ ↓ or W S to swim · hold <b>Shift</b> for slow, precise moves · click or drag in the water to send the diver there</div>
+    <button type="button" class="record" id="recordBtn">📍 Record reading <kbd>Space</kbd></button>
+    <div class="toast glass" id="toast" role="status"></div>
+  </div>
+
+  <aside class="panel">
+    <section class="card">
+      <h2>1 · Choose a dive site</h2>
+      <div class="sites" id="sites"></div>
+      <dl class="facts" id="facts"></dl>
+    </section>
+
+    <section class="card">
+      <h2>2 · The physics, live</h2>
+      <div class="eq" id="eq"></div>
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="arrows" checked> Show pressure arrows on the diver</label>
+    </section>
+
+    <section class="card challenge" id="challenge" hidden>
+      <h2>🎯 Mystery challenge</h2>
+      <div id="challengeBody"></div>
+      <div class="row" style="margin-top:10px"><button type="button" class="btn" id="newMystery">🎲 New mystery</button></div>
+    </section>
+
+    <section class="card">
+      <h2>3 · Dive log</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>#</th><th>Depth h (m)</th><th id="pHead">P (kPa)</th><th></th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table></div>
+      <div class="row">
+        <button type="button" class="btn" id="copyBtn">📋 Copy for spreadsheet</button>
+        <button type="button" class="btn" id="clearBtn">🗑 Clear log</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4 · Graph: pressure vs depth</h2>
+      <canvas id="graph"></canvas>
+      <div class="row" style="margin-top:8px"><label class="check"><input type="checkbox" id="fitBox"> Show best-fit line</label></div>
+      <div class="fit" id="fitOut"></div>
+    </section>
+  </aside>
+</div>
+
+<script>
+"use strict";
+/* ================================================================
+   Model and dive sites
+   ================================================================ */
+const WORLDS = [
+  { id: "ocean", icon: "🌊", name: "Pacific Ocean", place: "Earth · sea level", fluid: "Sea water",
+    rho: 1025, g: 9.81, patm: 101.3, max: 60, life: "fish",
+    sky: ["#38bdf8", "#e0f2fe"], top: "#22b8e0", mid: "#0369a1", deep: "#020b1c", sand: "#c2a878" },
+  { id: "titicaca", icon: "🏔️", name: "Lake Titicaca", place: "Earth · 3812 m above sea level", fluid: "Fresh water",
+    rho: 1000, g: 9.81, patm: 64.5, max: 40, life: "fish",
+    sky: ["#1d4ed8", "#bfdbfe"], top: "#2dd4bf", mid: "#0f766e", deep: "#03201d", sand: "#8b7a5a" },
+  { id: "deadsea", icon: "🧂", name: "Dead Sea", place: "Earth · 430 m below sea level", fluid: "Very salty water",
+    rho: 1240, g: 9.81, patm: 106.7, max: 40, life: "salt",
+    sky: ["#7dd3fc", "#fef3c7"], top: "#5eead4", mid: "#0e7490", deep: "#06222b", sand: "#e7e5e4" },
+  { id: "titan", icon: "🪐", name: "Ligeia Mare", place: "Titan, moon of Saturn", fluid: "Liquid methane (≈)",
+    rho: 500, g: 1.35, patm: 146.7, max: 150, life: "none",
+    sky: ["#9a3412", "#fdba74"], top: "#a16207", mid: "#57300a", deep: "#120802", sand: "#3f2a14" },
+  { id: "mliquid", icon: "🧪", name: "Mystery Liquid", place: "Earth · sea level", fluid: "Unknown liquid",
+    rho: 0, g: 9.81, patm: 101.3, max: 50, life: "jelly", mystery: true, hidden: ["rho"],
+    sky: ["#312e81", "#c4b5fd"], top: "#8b5cf6", mid: "#4c1d95", deep: "#0b0420", sand: "#4c3a6b" },
+  { id: "mplanet", icon: "👽", name: "Mystery Planet", place: "Somewhere in the galaxy", fluid: "Fresh water",
+    rho: 1000, g: 0, patm: 0, max: 50, life: "jelly", mystery: true, hidden: ["g", "patm"],
+    sky: ["#064e3b", "#fbcfe8"], top: "#10b981", mid: "#065f46", deep: "#01140f", sand: "#3b4a3f" },
+];
+const TARGETS = {
+  rho:  { label: "Density of the liquid, ρ", unit: "kg/m³" },
+  g:    { label: "Gravitational field strength, g", unit: "N/kg" },
+  patm: { label: "Air pressure at the surface, P<sub>atm</sub>", unit: "kPa" },
+};
+const TOLERANCE = 0.03;   // answers within 3 % are accepted
+
+const UNITS = {
+  kPa: { f: 1 / 1000, dp: 1 }, Pa: { f: 1, dp: 0 }, atm: { f: 1 / 101325, dp: 3 }, bar: { f: 1 / 1e5, dp: 3 },
+};
+
+const state = {
+  world: WORLDS[0], depth: 0, vel: 0, target: null, cam: -4,
+  mode: "abs", unit: "kPa", arrows: true, fit: false, stars: 0,
+  keys: { up: false, down: false, fine: false }, hold: { up: false, down: false },
+  data: {}, lastLogged: null,
+};
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const randInt = (a, b) => Math.floor(rnd(a, b + 1));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const round1 = v => Math.round(v * 10) / 10;
+
+function rollMystery(w) {
+  if (w.id === "mliquid") w.rho = 10 * randInt(70, 160);           // 700–1600 kg/m³
+  if (w.id === "mplanet") {
+    do { w.g = randInt(30, 250) / 10; } while (w.g > 8.5 && w.g < 11);  // never Earth-like
+    w.patm = randInt(20, 300);
+  }
+  w.solved = {};
+  w.rolled = true;
+  state.data[w.id] = [];
+}
+
+/* pressure, in pascals, at a depth h (metres) */
+const pAbs = (w, h) => w.patm * 1000 + w.rho * w.g * h;
+const pShown = (w, pa) => state.mode === "abs" ? pa : pa - w.patm * 1000;
+const toUnit = pa => pa * UNITS[state.unit].f;
+const fmtP = pa => toUnit(pa).toFixed(UNITS[state.unit].dp);
+const isHidden = (w, key) => w.mystery && w.hidden.includes(key) && !(w.solved && w.solved[key]);
+const rows = () => (state.data[state.world.id] ||= []);
+
+/* ================================================================
+   Elements
+   ================================================================ */
+const $ = s => document.querySelector(s);
+const scene = $("#scene"), ctx = scene.getContext("2d");
+const dial = $("#dial"), dctx = dial.getContext("2d");
+const graph = $("#graph"), gctx = graph.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+
+function fitCanvas(c, cx) {
+  const r = c.getBoundingClientRect();
+  const d = window.devicePixelRatio || 1;
+  c.width = Math.max(1, Math.round(r.width * d));
+  c.height = Math.max(1, Math.round(r.height * d));
+  cx.setTransform(d, 0, 0, d, 0, 0);
+  return [r.width, r.height, d];
+}
+function resize() {
+  [W, H, DPR] = fitCanvas(scene, ctx);
+  fitCanvas(dial, dctx);
+  fitCanvas(graph, gctx);
+  drawGraph();
+}
+new ResizeObserver(resize).observe(document.body);
+
+/* ================================================================
+   Scene content (fish, kelp, particles…) rebuilt for each site
+   ================================================================ */
+let fish = [], jellies = [], specks = [], kelp = [], rocks = [], crystals = [], bubbles = [], confetti = [], clouds = [];
+
+function buildScene(w) {
+  const n = Math.round(w.max / 4);
+  fish = []; jellies = []; kelp = []; rocks = []; crystals = [];
+  if (w.life === "fish") for (let i = 0; i < n; i++) {
+    const dir = Math.random() < .5 ? -1 : 1;
+    fish.push({ d: rnd(1.5, w.max), u: Math.random(), v: dir * rnd(.02, .06), size: rnd(.25, .6),
+      hue: [28, 45, 190, 340, 200][i % 5], ph: rnd(0, 6) });
+  }
+  if (w.life === "jelly") for (let i = 0; i < n; i++)
+    jellies.push({ d: rnd(2, w.max), u: Math.random(), ph: rnd(0, 6), size: rnd(.3, .7), hue: rnd(260, 330) });
+  specks = [];
+  for (let i = 0; i < w.max * 7; i++) specks.push({ u: Math.random(), d: rnd(0, w.max + 2), r: rnd(.6, 1.8), s: rnd(.03, .12) });
+  if (w.life === "fish" || w.life === "jelly")
+    for (let i = 0; i < 9; i++) kelp.push({ u: rnd(0, 1), h: rnd(2.5, 7), ph: rnd(0, 6) });
+  for (let i = 0; i < 7; i++) rocks.push({ u: rnd(0, 1), r: rnd(.4, 1.3) });
+  if (w.life === "salt") for (let i = 0; i < 14; i++) crystals.push({ u: rnd(0, 1), r: rnd(.25, .9) });
+  clouds = [];
+  for (let i = 0; i < 5; i++) clouds.push({ u: Math.random(), y: rnd(.15, .7), s: rnd(.6, 1.3), v: rnd(.004, .012) });
+  bubbles = [];
+}
+
+/* ================================================================
+   Colours
+   ================================================================ */
+function hex(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mix(a, b, t) {
+  const A = hex(a), B = hex(b);
+  return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`;
+}
+function waterAt(w, d) {
+  const t = clamp(d / w.max, 0, 1);
+  return t < .35 ? mix(w.top, w.mid, t / .35) : mix(w.mid, w.deep, (t - .35) / .65);
+}
+
+/* ================================================================
+   Input
+   ================================================================ */
+const VIEW_M = 14;                 // metres of water visible on screen
+const ppm = () => H / VIEW_M;      // pixels per metre
+const ys = d => (d - state.cam) * ppm();
+
+function keyChange(e, down) {
+  state.keys.fine = e.shiftKey;   // follow the real Shift state, so a missed release can't leave slow mode on
+  const tg = e.target;
+  if ((tg.tagName === "INPUT" && tg.type !== "checkbox") || tg.tagName === "SELECT") return;
+  const k = e.key;
+  if (k === " ") e.preventDefault();   // stop Space from also "clicking" a focused button
+  if (k === "ArrowUp" || k === "w" || k === "W") { state.keys.up = down; e.preventDefault(); }
+  else if (k === "ArrowDown" || k === "s" || k === "S") { state.keys.down = down; e.preventDefault(); }
+  else if (k === " " && down && !e.repeat) record();
+}
+addEventListener("keydown", e => keyChange(e, true));
+addEventListener("keyup", e => keyChange(e, false));
+addEventListener("blur", () => { state.keys.up = state.keys.down = state.keys.fine = false; });
+addEventListener("pointermove", e => { state.keys.fine = e.shiftKey; });
+document.addEventListener("visibilitychange", () => { state.keys.up = state.keys.down = state.keys.fine = false; });
+
+function holdButton(el, dir) {
+  const on = e => { e.preventDefault(); state.hold[dir] = true; el.classList.add("held"); el.setPointerCapture?.(e.pointerId); };
+  const off = () => { state.hold[dir] = false; el.classList.remove("held"); };
+  el.addEventListener("pointerdown", on);
+  el.addEventListener("pointerup", off);
+  el.addEventListener("pointercancel", off);
+  el.addEventListener("lostpointercapture", off);
+}
+holdButton($("#upBtn"), "up");
+holdButton($("#downBtn"), "down");
+
+let dragging = false;
+function aimAt(e) {
+  const r = scene.getBoundingClientRect();
+  const d = state.cam + (e.clientY - r.top) / ppm();
+  state.target = clamp(d, 0, state.world.max);
+}
+scene.addEventListener("pointerdown", e => { dragging = true; scene.setPointerCapture(e.pointerId); aimAt(e); });
+scene.addEventListener("pointermove", e => { if (dragging) aimAt(e); });
+scene.addEventListener("pointerup", () => { dragging = false; });
+scene.addEventListener("pointercancel", () => { dragging = false; });
+scene.addEventListener("wheel", e => {
+  e.preventDefault();
+  const base = state.target ?? state.depth;
+  state.target = clamp(base + e.deltaY * (e.shiftKey ? 0.002 : 0.012), 0, state.world.max);
+}, { passive: false });
+
+$("#recordBtn").addEventListener("click", record);
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  state.mode = b.dataset.mode;
+  document.querySelectorAll(".seg button").forEach(x => x.classList.toggle("on", x === b));
+  refreshPanels();
+}));
+$("#unit").addEventListener("change", e => { state.unit = e.target.value; refreshPanels(); });
+$("#arrows").addEventListener("change", e => { state.arrows = e.target.checked; });
+$("#fitBox").addEventListener("change", e => { state.fit = e.target.checked; drawGraph(); });
+
+/* ================================================================
+   Update loop
+   ================================================================ */
+let t = 0, breath = 0;
+function update(dt) {
+  const w = state.world;
+  const vmax = Math.max(3, w.max / 10);
+  const dir = (state.keys.down || state.hold.down ? 1 : 0) - (state.keys.up || state.hold.up ? 1 : 0);
+  let want = 0;
+  if (dir) {
+    state.target = null;
+    want = dir * vmax * (state.keys.fine ? 0.08 : 1);
+  } else if (state.target !== null) {
+    const diff = state.target - state.depth;
+    want = clamp(diff * 2.5, -vmax, vmax);
+    if (Math.abs(diff) < 0.01 && !dragging) { state.depth = state.target; state.target = null; want = 0; state.vel = 0; }
+  }
+  state.vel += (want - state.vel) * Math.min(1, dt * 6);
+  state.depth += state.vel * dt;
+  if (state.depth < 0) { state.depth = 0; state.vel = Math.max(0, state.vel); }
+  if (state.depth > w.max) { state.depth = w.max; state.vel = Math.min(0, state.vel); }
+
+  // camera follows the diver
+  const camTarget = clamp(state.depth - VIEW_M * 0.45, -4.5, w.max + 2.2 - VIEW_M);
+  state.cam += (camTarget - state.cam) * Math.min(1, dt * 5);
+
+  // life
+  for (const f of fish) { f.u += f.v * dt; if (f.u > 1.15) f.u = -.15; if (f.u < -.15) f.u = 1.15; }
+  for (const j of jellies) { j.d -= Math.max(0, Math.sin(t * 1.2 + j.ph)) * .12 * dt; if (j.d < 1.5) j.d = w.max; j.u += .004 * dt * Math.sin(j.ph); }
+  for (const s of specks) { s.d += s.s * dt; s.u += Math.sin(t * .3 + s.d) * .0004; if (s.d > w.max + 2.2) s.d = 0; }
+  for (const c of clouds) { c.u += c.v * dt; if (c.u > 1.25) c.u = -.25; }
+
+  // breathing bubbles: a burst every ~2.4 s
+  breath -= dt;
+  if (breath <= 0) {
+    breath = 2.4;
+    const p0 = pAbs(w, state.depth);
+    for (let i = 0; i < 6; i++) bubbles.push({ x: diverX() + 0.7 * diverScale() * ppm() + rnd(-4, 4), d: state.depth - .05 + rnd(-.05, .05),
+      p0, r: rnd(2, 3.6), delay: i * .07, wob: rnd(0, 6) });
+  }
+  for (const b of bubbles) {
+    if (b.delay > 0) { b.delay -= dt; continue; }
+    b.d -= (0.9 + b.r * .15) * dt;
+    b.x += Math.sin(t * 5 + b.wob) * 0.6;
+  }
+  bubbles = bubbles.filter(b => b.d > -0.05);
+
+  for (const c of confetti) { c.vy += 420 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt; c.life -= dt; }
+  confetti = confetti.filter(c => c.life > 0);
+}
+
+const diverX = () => W < 700 ? 64 + (W - 64 - 160) / 2 : W * 0.52;
+const diverScale = () => 1.35;
+
+/* ================================================================
+   Drawing the scene
+   ================================================================ */
+function drawScene() {
+  const w = state.world, P = ppm();
+  const ySurf = ys(0);
+  ctx.clearRect(0, 0, W, H);
+
+  // --- sky
+  if (ySurf > 0) {
+    const g = ctx.createLinearGradient(0, ySurf - 4.5 * P, 0, ySurf);
+    g.addColorStop(0, w.sky[0]); g.addColorStop(1, w.sky[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, ySurf + 2);
+    drawSkyThings(w, ySurf, P);
+  }
+
+  // --- water body with a wavy surface
+  const yTop = Math.max(ySurf, -10);
+  const dTop = Math.max(0, state.cam), dBot = state.cam + VIEW_M;
+  const wg = ctx.createLinearGradient(0, ys(dTop), 0, ys(dBot));
+  for (let i = 0; i <= 6; i++) wg.addColorStop(i / 6, waterAt(w, dTop + (dBot - dTop) * i / 6));
+  ctx.fillStyle = wg;
+  ctx.beginPath();
+  if (ySurf > -10) {
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W + 10; x += 10) ctx.lineTo(x, ySurf + wave(x));
+    ctx.lineTo(W, H);
+  } else ctx.rect(0, yTop, W, H);
+  ctx.fill();
+
+  // --- light rays from the surface
+  if (state.cam < 35 && w.life !== "none") drawRays(w, ySurf, P);
+
+  // --- floating specks (marine snow)
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  for (const s of specks) {
+    const y = ys(s.d); if (y < ySurf || y < -5 || y > H + 5) continue;
+    ctx.globalAlpha = .25 + .35 * (1 - s.d / (w.max + 2));
+    ctx.beginPath(); ctx.arc(((s.u % 1) + 1) % 1 * W, y, s.r, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- seabed
+  drawSeabed(w, P);
+
+  // --- creatures
+  for (const f of fish) drawFish(w, f, P);
+  for (const j of jellies) drawJelly(w, j, P);
+
+  // --- bubbles (they grow as they rise: Boyle's law!)
+  ctx.lineWidth = 1.2;
+  for (const b of bubbles) {
+    if (b.delay > 0) continue;
+    const y = ys(b.d); if (y < -10 || y > H + 10) continue;
+    const r = b.r * Math.cbrt(b.p0 / pAbs(w, Math.max(0, b.d)));
+    ctx.strokeStyle = "rgba(220,250,255,.85)"; ctx.fillStyle = "rgba(220,250,255,.15)";
+    ctx.beginPath(); ctx.arc(b.x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.8)";
+    ctx.beginPath(); ctx.arc(b.x - r * .35, y - r * .35, r * .25, 0, 7); ctx.fill();
+  }
+
+  // --- diver and pressure arrows
+  const dx = diverX(), dy = ys(state.depth) + Math.sin(t * 1.6) * 2;
+  if (state.arrows) drawArrows(w, dx, dy, P);
+  const tilt = clamp(state.vel * 0.12, -0.5, 0.5);
+  const kick = 3 + Math.min(9, Math.abs(state.vel) * 2.2);
+  drawDiver(dx, dy, P * diverScale(), tilt, kick);
+
+  // --- darkening vignette with depth
+  const dark = clamp(state.depth / w.max, 0, 1);
+  const vg = ctx.createRadialGradient(dx, dy, Math.min(W, H) * .15, dx, dy, Math.max(W, H) * .8);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(0,0,0,${.15 + dark * .55})`);
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+  // --- depth ruler + target marker
+  drawRuler(w, P, dx, dy);
+  if (state.target !== null && Math.abs(state.target - state.depth) > .05) {
+    const y = ys(state.target);
+    ctx.strokeStyle = "rgba(250,204,21,.7)"; ctx.setLineDash([3, 5]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(dx, y, 14, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // --- confetti
+  for (const c of confetti) {
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.globalAlpha = clamp(c.life, 0, 1);
+    ctx.fillStyle = c.col; ctx.fillRect(-4, -2.5, 8, 5); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+const wave = x => Math.sin(x * .018 + t * 1.4) * 3 + Math.sin(x * .047 - t * 1.1) * 1.6;
+
+function drawSkyThings(w, ySurf, P) {
+  // sun / distant light
+  const sx = W * .78, sy = ySurf - 3.2 * P;
+  const titan = w.id === "titan";
+  const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, P * (titan ? 2.2 : 1.6));
+  sg.addColorStop(0, titan ? "rgba(255,237,213,.55)" : "rgba(255,255,230,1)");
+  sg.addColorStop(.25, titan ? "rgba(254,215,170,.3)" : "rgba(255,240,180,.8)");
+  sg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, P * 2.2, 0, 7); ctx.fill();
+  if (titan) { // Saturn hanging in the haze
+    ctx.save(); ctx.globalAlpha = .35; ctx.fillStyle = "#fde68a";
+    ctx.beginPath(); ctx.arc(W * .3, ySurf - 3 * P, P * .9, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 3; ctx.beginPath();
+    ctx.ellipse(W * .3, ySurf - 3 * P, P * 1.7, P * .35, -.25, 0, 7); ctx.stroke(); ctx.restore();
+  }
+  if (w.id === "mplanet") { // two moons
+    ctx.fillStyle = "rgba(255,255,255,.7)";
+    ctx.beginPath(); ctx.arc(W * .2, ySurf - 3.4 * P, P * .45, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(W * .32, ySurf - 2.7 * P, P * .25, 0, 7); ctx.fill();
+  }
+  // clouds
+  ctx.fillStyle = titan ? "rgba(254,215,170,.35)" : "rgba(255,255,255,.75)";
+  for (const c of clouds) {
+    const cx = c.u * W, cy = ySurf - (4.3 - c.y * 3) * P, s = c.s * P;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, s * 1.2, s * .35, 0, 0, 7);
+    ctx.ellipse(cx + s * .5, cy - s * .2, s * .6, s * .3, 0, 0, 7);
+    ctx.ellipse(cx - s * .5, cy - s * .1, s * .5, s * .25, 0, 0, 7);
+    ctx.fill();
+  }
+  // dive boat
+  const bx = W * .26, by = ySurf + wave(bx) - 2, s = P;
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.sin(t * 1.3) * .03);
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath(); ctx.moveTo(-2.2 * s, -.5 * s); ctx.lineTo(2.4 * s, -.5 * s); ctx.lineTo(1.8 * s, .35 * s); ctx.lineTo(-1.8 * s, .35 * s); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#ef4444"; ctx.fillRect(-2.1 * s, -.2 * s, 4.4 * s, .14 * s);
+  ctx.fillStyle = "#e2e8f0"; ctx.fillRect(-1 * s, -1.2 * s, 1.6 * s, .7 * s);
+  ctx.fillStyle = "#38bdf8"; ctx.fillRect(-.8 * s, -1.05 * s, .5 * s, .35 * s); ctx.fillRect(-.1 * s, -1.05 * s, .5 * s, .35 * s);
+  ctx.strokeStyle = "#334155"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(1.6 * s, -.5 * s); ctx.lineTo(1.6 * s, -2.1 * s); ctx.stroke();
+  // diver-down flag
+  ctx.fillStyle = "#dc2626"; ctx.fillRect(1.6 * s, -2.1 * s, .9 * s, .6 * s);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = .14 * s; ctx.beginPath(); ctx.moveTo(1.6 * s, -2.1 * s); ctx.lineTo(2.5 * s, -1.5 * s); ctx.stroke();
+  ctx.restore();
+}
+
+function drawRays(w, ySurf, P) {
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const y0 = Math.max(ySurf, -50), y1 = ys(30);
+  for (let i = 0; i < 6; i++) {
+    const x0 = W * (.1 + i * .17) + Math.sin(t * .4 + i) * 30;
+    const g = ctx.createLinearGradient(0, ySurf, 0, y1);
+    g.addColorStop(0, "rgba(200,245,255,.08)"); g.addColorStop(1, "rgba(200,245,255,0)");
+    ctx.fillStyle = g; ctx.beginPath();
+    ctx.moveTo(x0 - 18, y0); ctx.lineTo(x0 + 18 + i * 3, y0);
+    ctx.lineTo(x0 + 140 + i * 10, y1); ctx.lineTo(x0 + 40, y1); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function bedDepth(w, u) {
+  return w.max + 1.25 + .45 * Math.sin(u * 9 + 1) + .3 * Math.sin(u * 23 + 2) + .15 * Math.sin(u * 61);
+}
+function drawSeabed(w, P) {
+  const yb = ys(w.max + 1.25);
+  if (yb > H + 8 * P) return;
+  // kelp first (behind the sand)
+  for (const k of kelp) {
+    const x = k.u * W, y = ys(bedDepth(w, k.u));
+    ctx.strokeStyle = w.life === "jelly" ? "rgba(244,114,182,.55)" : "rgba(34,120,60,.85)";
+    ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x, y);
+    const segs = 8;
+    for (let i = 1; i <= segs; i++) {
+      const f = i / segs;
+      ctx.lineTo(x + Math.sin(t * 1.2 + k.ph + f * 3) * 12 * f, y - k.h * P * f);
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle = w.sand;
+  ctx.beginPath(); ctx.moveTo(0, H + 5);
+  for (let x = 0; x <= W + 8; x += 8) ctx.lineTo(x, ys(bedDepth(w, x / W)));
+  ctx.lineTo(W, H + 5); ctx.closePath(); ctx.fill();
+  // shading at the top of the sand
+  const sg = ctx.createLinearGradient(0, yb - P, 0, yb + 2 * P);
+  sg.addColorStop(0, "rgba(255,255,255,.12)"); sg.addColorStop(1, "rgba(0,0,0,.35)");
+  ctx.fillStyle = sg; ctx.fill();
+  for (const r of rocks) {
+    const x = r.u * W, y = ys(bedDepth(w, r.u)) + 3;
+    ctx.fillStyle = "rgba(30,41,59,.85)"; ctx.beginPath(); ctx.ellipse(x, y, r.r * P, r.r * P * .55, 0, Math.PI, 0); ctx.fill();
+  }
+  for (const c of crystals) {
+    const x = c.u * W, y = ys(bedDepth(w, c.u)) + 4, s = c.r * P;
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath();
+    ctx.moveTo(x - s * .6, y); ctx.lineTo(x - s * .3, y - s); ctx.lineTo(x, y - s * .5); ctx.lineTo(x + s * .25, y - s * 1.3); ctx.lineTo(x + s * .6, y); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawFish(w, f, P) {
+  const y = ys(f.d) + Math.sin(t * 2 + f.ph) * 4; if (y < -30 || y > H + 30) return;
+  const x = f.u * W, s = f.size * P, dir = Math.sign(f.v);
+  const light = 55 - 35 * (f.d / w.max);
+  ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+  ctx.fillStyle = `hsl(${f.hue} 80% ${light}%)`;
+  ctx.beginPath(); ctx.ellipse(0, 0, s, s * .42, 0, 0, 7); ctx.fill();
+  const wag = Math.sin(t * 9 + f.ph) * s * .15;
+  ctx.beginPath(); ctx.moveTo(-s * .85, 0); ctx.lineTo(-s * 1.45, -s * .4 + wag); ctx.lineTo(-s * 1.45, s * .4 + wag); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s * .55, -s * .1, s * .12, 0, 7); ctx.fill();
+  ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(s * .58, -s * .1, s * .06, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+function drawJelly(w, j, P) {
+  const y = ys(j.d); if (y < -40 || y > H + 60) return;
+  const x = j.u * W, s = j.size * P, pulse = 1 + .12 * Math.sin(t * 2.4 + j.ph);
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(x, y, 0, x, y, s * 2.4);
+  g.addColorStop(0, `hsla(${j.hue},90%,70%,.35)`); g.addColorStop(1, `hsla(${j.hue},90%,60%,0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s * 2.4, 0, 7); ctx.fill();
+  ctx.fillStyle = `hsla(${j.hue},90%,75%,.55)`;
+  ctx.beginPath(); ctx.ellipse(x, y, s * pulse, s * .7 / pulse, 0, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = `hsla(${j.hue},90%,80%,.45)`; ctx.lineWidth = 1.5;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath(); ctx.moveTo(x + i * s * .3, y);
+    for (let k = 1; k <= 6; k++) ctx.lineTo(x + i * s * .3 + Math.sin(t * 3 + k + i) * 3, y + k * s * .35);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawArrows(w, x, y, P) {
+  const frac = pAbs(w, state.depth) / pAbs(w, w.max);
+  const len = 10 + 34 * frac;
+  const rx = 1.0 * P * diverScale(), ry = .38 * P * diverScale();
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 2.2;
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    const ex = x + Math.cos(a) * (rx + 4), ey = y + Math.sin(a) * (ry + 4);   // tip, on the body outline
+    const sx = ex + Math.cos(a) * len, sy = ey + Math.sin(a) * len;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+    const h = 6, b = Math.atan2(ey - sy, ex - sx);
+    ctx.beginPath(); ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - h * Math.cos(b - .5), ey - h * Math.sin(b - .5));
+    ctx.lineTo(ex - h * Math.cos(b + .5), ey - h * Math.sin(b + .5)); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawDiver(x, y, s, ang, kick) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const leg = (ph, col, finCol) => {
+    const hip = [-.36, .04], knee = [-.7, .05 + ph * .22], ank = [-1.0, .05 + ph * .42];
+    ctx.strokeStyle = col; ctx.lineWidth = .13;
+    ctx.beginPath(); ctx.moveTo(...hip); ctx.lineTo(...knee); ctx.lineTo(...ank); ctx.stroke();
+    ctx.fillStyle = finCol; ctx.beginPath();
+    ctx.moveTo(ank[0] + .04, ank[1] - .05); ctx.lineTo(ank[0] - .42, ank[1] - .13 + ph * .35);
+    ctx.lineTo(ank[0] - .42, ank[1] + .11 + ph * .35); ctx.lineTo(ank[0] + .04, ank[1] + .05); ctx.closePath(); ctx.fill();
+  };
+  const p1 = Math.sin(t * kick) * .5, p2 = Math.sin(t * kick + Math.PI) * .5;
+  leg(p2, "#0b1220", "#0e7490");
+  // tank
+  ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.roundRect(-.44, -.33, .66, .17, .08); ctx.fill();
+  ctx.fillStyle = "#ca8a04"; ctx.fillRect(-.3, -.33, .05, .17); ctx.fillRect(.02, -.33, .05, .17);
+  ctx.fillStyle = "#94a3b8"; ctx.fillRect(.22, -.29, .07, .09);
+  // body
+  ctx.fillStyle = "#1e293b"; ctx.beginPath(); ctx.ellipse(0, 0, .45, .16, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#22d3ee"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(-.35, .02); ctx.quadraticCurveTo(0, -.06, .38, .02); ctx.stroke();
+  leg(p1, "#1e293b", "#22d3ee");
+  // hose
+  ctx.strokeStyle = "#0f172a"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(.27, -.25); ctx.quadraticCurveTo(.55, -.3, .66, .03); ctx.stroke();
+  // head and mask
+  ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(.54, -.03, .13, 0, 7); ctx.fill();
+  ctx.fillStyle = "#f97316"; ctx.beginPath(); ctx.roundRect(.57, -.11, .12, .11, .03); ctx.fill();
+  const vg = ctx.createLinearGradient(.59, -.1, .67, -.01);
+  vg.addColorStop(0, "#a5f3fc"); vg.addColorStop(1, "#0891b2");
+  ctx.fillStyle = vg; ctx.beginPath(); ctx.roundRect(.59, -.095, .085, .08, .02); ctx.fill();
+  ctx.fillStyle = "#64748b"; ctx.beginPath(); ctx.arc(.66, .04, .035, 0, 7); ctx.fill();
+  // arm holding the pressure gauge
+  ctx.strokeStyle = "#1e293b"; ctx.lineWidth = .1;
+  ctx.beginPath(); ctx.moveTo(.3, .04); ctx.lineTo(.42, .19); ctx.lineTo(.56, .21); ctx.stroke();
+  ctx.fillStyle = "#e2e8f0"; ctx.beginPath(); ctx.arc(.63, .21, .055, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#dc2626"; ctx.lineWidth = .012;
+  const na = -Math.PI * .75 + needle * Math.PI * 1.5;
+  ctx.beginPath(); ctx.moveTo(.63, .21); ctx.lineTo(.63 + Math.cos(na - Math.PI / 2) * .04, .21 + Math.sin(na - Math.PI / 2) * .04); ctx.stroke();
+  ctx.restore();
+}
+
+function drawRuler(w, P, dx, dy) {
+  const RW = 64;
+  ctx.fillStyle = "rgba(2,8,18,.55)"; ctx.fillRect(0, 0, RW, H);
+  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.beginPath(); ctx.moveTo(RW + .5, 0); ctx.lineTo(RW + .5, H); ctx.stroke();
+  ctx.font = "600 11px system-ui, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const d0 = Math.max(0, Math.ceil(state.cam)), d1 = Math.min(w.max, Math.floor(state.cam + VIEW_M));
+  for (let d = d0; d <= d1; d++) {
+    const y = Math.round(ys(d)) + .5, major = d % 5 === 0;
+    ctx.strokeStyle = major ? "rgba(255,255,255,.9)" : "rgba(255,255,255,.45)";
+    ctx.lineWidth = major ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(RW - (major ? 18 : 9), y); ctx.stroke();
+    if (major) { ctx.fillStyle = "#e6f1ff"; ctx.fillText(d + " m", RW - 22, y); }
+  }
+  // half-metre ticks
+  ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.lineWidth = 1;
+  for (let d = d0 - 1; d <= d1; d++) {
+    const dd = d + .5; if (dd < 0 || dd > w.max) continue;
+    const y = Math.round(ys(dd)) + .5; ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(RW - 5, y); ctx.stroke();
+  }
+  // logged readings
+  for (const r of rows()) {
+    const y = ys(r.h); if (y < 0 || y > H) continue;
+    ctx.fillStyle = r === state.lastLogged ? "#fde047" : "rgba(250,204,21,.75)";
+    ctx.beginPath(); ctx.moveTo(RW + 2, y); ctx.lineTo(RW + 8, y - 5); ctx.lineTo(RW + 14, y); ctx.lineTo(RW + 8, y + 5); ctx.closePath(); ctx.fill();
+  }
+  // diver depth pointer
+  const y = ys(state.depth);
+  ctx.strokeStyle = "rgba(103,232,249,.6)"; ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(dx - 1.25 * P * diverScale(), y); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "#22d3ee";
+  ctx.beginPath(); ctx.moveTo(RW, y); ctx.lineTo(RW + 10, y - 7); ctx.lineTo(RW + 10, y + 7); ctx.closePath(); ctx.fill();
+}
+
+/* ================================================================
+   Pressure dial (HUD)
+   ================================================================ */
+let needle = 0;
+function niceStep(range, n = 5) {
+  const raw = range / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * mag + 1e-12) return m * mag;
+  return 10 * mag;
+}
+const niceCeil = (v, n = 5) => { const s = niceStep(v, n); return Math.ceil(v / s - 1e-9) * s; };
+function shortNum(v) {
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+  if (Math.abs(v) >= 1e4) return Math.round(v / 1e3) + "k";
+  return +v.toFixed(3) + "";
+}
+function drawDial(value, max) {
+  const r = dial.getBoundingClientRect(), w = r.width, h = r.height;
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 3;
+  dctx.clearRect(0, 0, w, h);
+  const a0 = Math.PI * .75, a1 = Math.PI * 2.25;
+  const bg = dctx.createRadialGradient(cx, cy - R * .3, R * .1, cx, cy, R);
+  bg.addColorStop(0, "#1e3a5f"); bg.addColorStop(1, "#071426");
+  dctx.fillStyle = bg; dctx.beginPath(); dctx.arc(cx, cy, R, 0, 7); dctx.fill();
+  dctx.strokeStyle = "#94a3b8"; dctx.lineWidth = 3; dctx.stroke();
+  // red zone
+  dctx.strokeStyle = "rgba(248,113,113,.8)"; dctx.lineWidth = 5;
+  dctx.beginPath(); dctx.arc(cx, cy, R - 7, a0 + (a1 - a0) * .85, a1); dctx.stroke();
+  const step = niceStep(max, 5);
+  dctx.fillStyle = "#cbd5e1"; dctx.font = `600 ${Math.max(8, R * .14)}px system-ui`; dctx.textAlign = "center"; dctx.textBaseline = "middle";
+  for (let v = 0; v <= max + 1e-9; v += step / 2) {
+    const a = a0 + (a1 - a0) * v / max, major = Math.abs(v / step - Math.round(v / step)) < 1e-6;
+    dctx.strokeStyle = major ? "#e2e8f0" : "#64748b"; dctx.lineWidth = major ? 2 : 1;
+    dctx.beginPath(); dctx.moveTo(cx + Math.cos(a) * (R - 4), cy + Math.sin(a) * (R - 4));
+    dctx.lineTo(cx + Math.cos(a) * (R - (major ? 13 : 9)), cy + Math.sin(a) * (R - (major ? 13 : 9))); dctx.stroke();
+    if (major) dctx.fillText(shortNum(v), cx + Math.cos(a) * (R - 24), cy + Math.sin(a) * (R - 24));
+  }
+  needle += (clamp(value / max, 0, 1.02) - needle) * .2;
+  const a = a0 + (a1 - a0) * needle;
+  dctx.strokeStyle = "#f87171"; dctx.lineWidth = 3; dctx.shadowColor = "rgba(248,113,113,.8)"; dctx.shadowBlur = 8;
+  dctx.beginPath(); dctx.moveTo(cx - Math.cos(a) * 8, cy - Math.sin(a) * 8); dctx.lineTo(cx + Math.cos(a) * (R - 14), cy + Math.sin(a) * (R - 14)); dctx.stroke();
+  dctx.shadowBlur = 0;
+  dctx.fillStyle = "#e2e8f0"; dctx.beginPath(); dctx.arc(cx, cy, 5, 0, 7); dctx.fill();
+  dctx.fillStyle = "#94a3b8"; dctx.font = `700 ${Math.max(8, R * .13)}px system-ui`;
+  dctx.fillText(state.unit, cx, cy + R * .45);
+}
+
+/* ================================================================
+   HUD numbers and side panel
+   ================================================================ */
+let lastHud = "";
+function updateHud() {
+  const w = state.world, h = round1(state.depth);
+  const pa = pShown(w, pAbs(w, h));
+  const maxPa = pShown(w, pAbs(w, w.max));
+  const key = `${h}|${state.mode}|${state.unit}|${w.id}|${w.rho}|${w.g}`;
+  drawDial(toUnit(pa), niceCeil(toUnit(maxPa)));
+  if (key === lastHud) return;
+  lastHud = key;
+  $("#depthOut").textContent = h.toFixed(1);
+  $("#pOut").textContent = fmtP(pa);
+  $("#pLabel").innerHTML = state.mode === "abs" ? "P<sub>abs</sub>" : "P<sub>gauge</sub>";
+  renderEquation();
+}
+
+const val = (w, key, txt) => isHidden(w, key) ? `<span class="q">?</span>` : txt;
+
+function renderFacts() {
+  const w = state.world;
+  const solvedMark = key => w.mystery && w.hidden.includes(key) && w.solved?.[key] ? ` <span class="found">✓</span>` : "";
+  $("#facts").innerHTML = `
+    <dt>Place</dt><dd>${w.place}</dd>
+    <dt>Liquid</dt><dd>${w.fluid}</dd>
+    <dt>Density ρ</dt><dd>${val(w, "rho", w.rho + " kg/m³")}${solvedMark("rho")}</dd>
+    <dt>Gravity g</dt><dd>${val(w, "g", w.g + " N/kg")}${solvedMark("g")}</dd>
+    <dt>Air pressure P<sub>atm</sub></dt><dd>${val(w, "patm", w.patm + " kPa")}${solvedMark("patm")}</dd>
+    <dt>Deepest dive</dt><dd>${w.max} m</dd>`;
+  $("#siteChip").textContent = `${w.icon} ${w.name}`;
+}
+
+function renderEquation() {
+  const w = state.world, h = round1(state.depth);
+  const rgh = w.rho * w.g * h / 1000;           // kPa
+  const total = w.patm + rgh;
+  const k = v => v.toFixed(1);
+  const rho = val(w, "rho", w.rho), g = val(w, "g", w.g), pat = val(w, "patm", k(w.patm));
+  const anyHidden = w.mystery && w.hidden.some(x => isHidden(w, x));
+  const hide = anyHidden ? `<span class="q">?</span>` : null;
+  let html;
+  if (state.mode === "abs") {
+    html = `<div class="big">P = P<sub>atm</sub> + ρ g h</div>
+      <div>P = <span class="p">${pat}</span> kPa + (<span class="v">${rho}</span>)(<span class="v">${g}</span>)(<span class="v">${h.toFixed(1)}</span>) ÷ 1000</div>
+      <div>P = <span class="p">${pat}</span> kPa + <span class="p">${hide ?? k(rgh)}</span> kPa</div>
+      <div class="big">P = <span class="p">${k(total)}</span> kPa</div>`;
+  } else {
+    html = `<div class="big">P<sub>gauge</sub> = ρ g h</div>
+      <div>P<sub>gauge</sub> = (<span class="v">${rho}</span>)(<span class="v">${g}</span>)(<span class="v">${h.toFixed(1)}</span>) ÷ 1000</div>
+      <div class="big">P<sub>gauge</sub> = <span class="p">${k(rgh)}</span> kPa</div>`;
+  }
+  html += `<p class="note">${state.mode === "abs"
+    ? "<b>Absolute</b> pressure includes the air pushing down on the surface."
+    : "<b>Gauge</b> pressure is the extra pressure from the liquid only (absolute − P<sub>atm</sub>). Divers' gauges read this."}
+    ρ in kg/m³, g in N/kg, h in m; dividing by 1000 turns Pa into kPa.${anyHidden ? " <b>?</b> = hidden: find it from your graph!" : ""}</p>`;
+  $("#eq").innerHTML = html;
+}
+
+function renderSites() {
+  const box = $("#sites"); box.innerHTML = "";
+  for (const w of WORLDS) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "site" + (w === state.world ? " on" : "") + (w.mystery ? " mys" : "");
+    b.innerHTML = `<span class="ic">${w.icon}</span>${w.name}`;
+    b.addEventListener("click", () => selectWorld(w));
+    box.appendChild(b);
+  }
+}
+
+function renderLog() {
+  const w = state.world, list = rows();
+  $("#pHead").textContent = `P${state.mode === "abs" ? " absolute" : " gauge"} (${state.unit})`;
+  const tb = $("#logBody");
+  if (!list.length) { tb.innerHTML = `<tr><td colspan="4" class="empty">No readings yet. Swim to a depth and press <b>Record reading</b>.</td></tr>`; }
+  else tb.innerHTML = list.map((r, i) => `<tr class="${r === state.lastLogged ? "new" : ""}"><td>${i + 1}</td><td>${r.h.toFixed(1)}</td>
+      <td>${fmtP(pShown(w, r.pa))}</td><td class="del"><button type="button" data-i="${i}" aria-label="Delete reading ${i + 1}">×</button></td></tr>`).join("");
+  tb.querySelectorAll("button[data-i]").forEach(b => b.addEventListener("click", () => {
+    list.splice(+b.dataset.i, 1); state.lastLogged = null; renderLog();
+  }));
+  drawGraph();
+}
+
+function renderChallenge() {
+  const w = state.world, box = $("#challenge");
+  box.hidden = !w.mystery;
+  if (!w.mystery) return;
+  const intro = w.id === "mliquid"
+    ? "This liquid's density is unknown. Record readings at different depths, graph them, and use the slope to work out ρ."
+    : "On this planet, both <b>g</b> and the air pressure are unknown. The liquid is fresh water (ρ = 1000 kg/m³). Use your graph's slope and where it crosses the pressure axis.";
+  $("#challengeBody").innerHTML = `<p class="note" style="margin-top:0">${intro} Answers within ${TOLERANCE * 100}% earn a ⭐.</p>` +
+    w.hidden.map(key => `<div class="target">
+        <label for="ans-${key}">${TARGETS[key].label}</label>
+        <input id="ans-${key}" inputmode="decimal" autocomplete="off" ${w.solved[key] ? "disabled" : ""} value="${w.solved[key] ? w[key] : ""}">
+        <span>${TARGETS[key].unit} ${w.solved[key] ? "" : `<button type="button" class="btn primary" data-k="${key}">Check</button>`}</span>
+        <div class="msg ${w.solved[key] ? "good" : ""}" id="msg-${key}">${w.solved[key] ? "✓ Solved!" : ""}</div></div>`).join("");
+  box.querySelectorAll("button[data-k]").forEach(b => b.addEventListener("click", () => check(b.dataset.k)));
+  box.querySelectorAll("input").forEach(inp => inp.addEventListener("keydown", e => {
+    if (e.key === "Enter") check(inp.id.slice(4));
+  }));
+}
+
+function check(key) {
+  const w = state.world, inp = $("#ans-" + key), msg = $("#msg-" + key);
+  const v = parseFloat(String(inp.value).replace(",", "."));
+  if (!isFinite(v)) { msg.className = "msg bad"; msg.textContent = "Type a number first."; return; }
+  const err = (v - w[key]) / w[key];
+  if (Math.abs(err) <= TOLERANCE) {
+    w.solved[key] = true; state.stars++;
+    $("#stars").textContent = state.stars;
+    celebrate(); toast(`⭐ Correct! ${TARGETS[key].label.replace(/<[^>]+>/g, "")} = ${w[key]} ${TARGETS[key].unit}`, "good");
+    renderChallenge(); renderFacts(); lastHud = "";
+  } else {
+    msg.className = "msg bad";
+    msg.textContent = Math.abs(err) < .15
+      ? `Close, but ${err > 0 ? "a little too high" : "a little too low"}. Check your slope.`
+      : `Not yet: that is ${err > 0 ? "too high" : "too low"}. Is your slope in Pa/m or kPa/m?`;
+  }
+}
+
+function refreshPanels() { lastHud = ""; renderLog(); renderEquation(); }
+
+function selectWorld(w) {
+  if (w.mystery && !w.rolled) rollMystery(w);
+  state.world = w; state.depth = 0; state.vel = 0; state.target = null; state.cam = -4.5; state.lastLogged = null;
+  needle = 0; lastHud = "";
+  buildScene(w); renderSites(); renderFacts(); renderChallenge(); refreshPanels();
+}
+
+$("#newMystery").addEventListener("click", () => {
+  rollMystery(state.world); state.lastLogged = null;
+  renderFacts(); renderChallenge(); refreshPanels();
+  toast("🎲 A new mystery! Your old readings were cleared.", "warn");
+});
+$("#clearBtn").addEventListener("click", () => {
+  if (!rows().length || !confirm("Delete all readings for this dive site?")) return;
+  rows().length = 0; state.lastLogged = null; renderLog();
+});
+$("#copyBtn").addEventListener("click", async () => {
+  const w = state.world, list = rows();
+  if (!list.length) { toast("Nothing to copy yet.", "warn"); return; }
+  const txt = `Depth h (m)\tP ${state.mode === "abs" ? "absolute" : "gauge"} (${state.unit})\n` +
+    list.map(r => `${r.h.toFixed(1)}\t${fmtP(pShown(w, r.pa))}`).join("\n");
+  try { await navigator.clipboard.writeText(txt); }
+  catch { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  toast("📋 Copied! Paste it into a spreadsheet.", "good");
+});
+
+/* ================================================================
+   Recording
+   ================================================================ */
+function record() {
+  const w = state.world, h = round1(state.depth), list = rows();
+  if (list.some(r => r.h === h)) { toast(`You already recorded ${h.toFixed(1)} m. Swim to a new depth!`, "warn"); return; }
+  const r = { h, pa: pAbs(w, h) };
+  list.push(r); list.sort((a, b) => a.h - b.h); state.lastLogged = r;
+  toast(`📍 h = ${h.toFixed(1)} m  →  P = ${fmtP(pShown(w, r.pa))} ${state.unit}`);
+  renderLog();
+  if (list.length === 5) setTimeout(() => toast("Nice! 5 readings. Look at the graph: what shape is it?", "good"), 1600);
+}
+
+let toastTimer;
+function toast(msg, kind = "") {
+  const el = $("#toast");
+  el.textContent = msg; el.className = "toast glass show " + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+function celebrate() {
+  const cols = ["#facc15", "#22d3ee", "#a78bfa", "#4ade80", "#f472b6", "#fb923c"];
+  for (let i = 0; i < 160; i++) confetti.push({ x: W / 2, y: H * .35, vx: rnd(-380, 380), vy: rnd(-520, -120),
+    rot: rnd(0, 6), vr: rnd(-10, 10), life: rnd(1.6, 2.8), col: cols[i % cols.length] });
+}
+
+/* ================================================================
+   Graph
+   ================================================================ */
+function drawGraph() {
+  const r = graph.getBoundingClientRect(), w = r.width, h = r.height;
+  if (!w) return;
+  const ws = state.world, list = rows();
+  gctx.clearRect(0, 0, w, h);
+  const L = 52, R = 14, T = 14, B = 38, pw = w - L - R, ph = h - T - B;
+  const xMax = ws.max;
+  const yMax = niceCeil(toUnit(pShown(ws, pAbs(ws, ws.max))));
+  const X = v => L + v / xMax * pw, Y = v => T + ph - v / yMax * ph;
+  // grid
+  gctx.font = "11px system-ui"; gctx.fillStyle = "#8fb0d4"; gctx.lineWidth = 1;
+  const xs = niceStep(xMax, 6), yst = niceStep(yMax, 5);
+  gctx.textAlign = "center"; gctx.textBaseline = "top";
+  for (let v = 0; v <= xMax + 1e-9; v += xs) {
+    gctx.strokeStyle = "rgba(143,176,212,.15)"; gctx.beginPath(); gctx.moveTo(X(v), T); gctx.lineTo(X(v), T + ph); gctx.stroke();
+    gctx.fillText(shortNum(v), X(v), T + ph + 5);
+  }
+  gctx.textAlign = "right"; gctx.textBaseline = "middle";
+  for (let v = 0; v <= yMax + 1e-9; v += yst) {
+    gctx.strokeStyle = "rgba(143,176,212,.15)"; gctx.beginPath(); gctx.moveTo(L, Y(v)); gctx.lineTo(L + pw, Y(v)); gctx.stroke();
+    gctx.fillText(shortNum(v), L - 6, Y(v));
+  }
+  gctx.strokeStyle = "#8fb0d4"; gctx.lineWidth = 1.5;
+  gctx.beginPath(); gctx.moveTo(L, T); gctx.lineTo(L, T + ph); gctx.lineTo(L + pw, T + ph); gctx.stroke();
+  gctx.fillStyle = "#cbd5e1"; gctx.textAlign = "center"; gctx.textBaseline = "bottom";
+  gctx.fillText("Depth h (m)", L + pw / 2, h - 2);
+  gctx.save(); gctx.translate(12, T + ph / 2); gctx.rotate(-Math.PI / 2); gctx.textBaseline = "middle";
+  gctx.fillText(`P ${state.mode === "abs" ? "abs" : "gauge"} (${state.unit})`, 0, 0); gctx.restore();
+
+  const pts = list.map(p => [p.h, toUnit(pShown(ws, p.pa))]);
+  // best-fit line
+  let fitTxt = "";
+  if (state.fit && pts.length >= 2) {
+    const n = pts.length, sx = pts.reduce((a, p) => a + p[0], 0), sy = pts.reduce((a, p) => a + p[1], 0);
+    const sxx = pts.reduce((a, p) => a + p[0] * p[0], 0), sxy = pts.reduce((a, p) => a + p[0] * p[1], 0);
+    const den = n * sxx - sx * sx;
+    if (Math.abs(den) > 1e-12) {
+      const m = (n * sxy - sx * sy) / den, c = (sy - m * sx) / n;
+      gctx.save(); gctx.beginPath(); gctx.rect(L, T, pw, ph); gctx.clip();
+      gctx.strokeStyle = "#facc15"; gctx.setLineDash([6, 5]); gctx.lineWidth = 2;
+      gctx.beginPath(); gctx.moveTo(X(0), Y(c)); gctx.lineTo(X(xMax), Y(c + m * xMax)); gctx.stroke(); gctx.restore();
+      const dp = UNITS[state.unit].dp + 2;
+      fitTxt = `slope = ${m.toFixed(dp)} ${state.unit}/m · intercept = ${c.toFixed(dp - 1)} ${state.unit}`;
+    }
+  } else if (state.fit) fitTxt = "Record at least 2 readings for a best-fit line.";
+  $("#fitOut").textContent = fitTxt;
+  // points
+  for (const p of list) {
+    const x = X(p.h), y = Y(toUnit(pShown(ws, p.pa)));
+    gctx.fillStyle = p === state.lastLogged ? "#fde047" : "#22d3ee";
+    gctx.shadowColor = gctx.fillStyle; gctx.shadowBlur = 8;
+    gctx.beginPath(); gctx.arc(x, y, 4.5, 0, 7); gctx.fill();
+  }
+  gctx.shadowBlur = 0;
+}
+
+/* ================================================================
+   Go
+   ================================================================ */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt;
+  update(dt);
+  if (W && H) drawScene();
+  updateHud();
+  requestAnimationFrame(frame);
+}
+resize();
+selectWorld(WORLDS[0]);
+requestAnimationFrame(frame);
+setTimeout(() => toast("Swim down with ▼ or the arrow keys, then press Record reading"), 600);
+</script>
+</body>
+</html>
