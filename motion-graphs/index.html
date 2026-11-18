@@ -38,6 +38,12 @@
     @media print{.lesson-nav,.lesson-tools,.completion{display:none!important}.print-only{display:block}}
     [hidden]{display:none!important}.welcome{text-align:center;padding:20px 8px 12px}.welcome-logo{display:block;width:min(100%,470px);height:auto;margin:0 auto 12px}.kids-word{display:flex;justify-content:center;align-items:center;gap:5px;margin-bottom:28px;font-family:"Comic Sans MS","Chalkboard SE",cursive;font-size:2.8rem;font-weight:900}.kids-word .for{font:700 1.2rem system-ui;margin-right:7px}.kids-word b{display:inline-block;border:2px solid #193348;border-radius:12px;padding:0 10px;box-shadow:3px 3px 0 #193348;transform:rotate(-7deg);background:#ffcf68}.kids-word b:nth-of-type(2){background:#a6e5ed;transform:rotate(6deg)}.kids-word b:nth-of-type(3){background:#e4c4ff;transform:rotate(-4deg)}.kids-word b:nth-of-type(4){background:#ffbdd1;transform:rotate(8deg)}.welcome h1{font-size:clamp(1.9rem,5vw,2.8rem)}.welcome p{max-width:540px;margin:14px auto}.welcome-path{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:24px 0}.welcome-path span{padding:10px 14px;background:#eaf8f3;border-radius:12px;font-weight:750}.welcome-form{max-width:350px;margin:24px auto 0;text-align:left}.welcome-form label{display:block;font-weight:800;margin-bottom:8px}.welcome-form input{width:100%;padding:12px;border:2px solid #8199a9;border-radius:12px;font:inherit}.welcome-form button{width:100%;margin-top:16px}.toast{position:fixed;bottom:20px;right:20px;max-width:min(430px,calc(100vw - 40px));background:#e6f8e9;border:3px solid #277a45;box-shadow:4px 4px 0 #193348;border-radius:16px;padding:16px 22px;font-size:1.12rem;font-weight:800;z-index:10;pointer-events:none}.toast.retry{background:#fff3d8;border-color:#a66a16}
     @media print{.toast{display:none!important}}
+    .calc-toggle{position:fixed;left:20px;bottom:20px;z-index:20;width:60px;height:60px;border-radius:50%;border:3px solid #193348;background:#ffcf68;box-shadow:3px 3px 0 #193348;font-size:1.7rem;display:grid;place-items:center;padding:0}.calc-toggle[aria-expanded=true]{background:#c9f1e6}
+    .calc{position:fixed;left:20px;bottom:92px;z-index:21;width:264px;background:#fff;border:3px solid #193348;border-radius:18px;box-shadow:5px 5px 0 #193348;overflow:hidden;touch-action:none}.calc:focus{outline:none}.calc:focus-visible{outline:3px solid #e0507e}
+    .calc-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#c9f1e6;border-bottom:2px solid #193348;padding:6px 8px 6px 12px;cursor:grab;user-select:none;font-weight:800}.calc-bar:active{cursor:grabbing}.calc-bar small{font-weight:600;color:#526b79}.calc-close{border:2px solid #193348;border-radius:9px;background:#fff;width:34px;height:34px;font-weight:900;padding:0}
+    .calc-screen{margin:10px;padding:8px 12px;border:2px solid #8199a9;border-radius:10px;background:#f6fbff;text-align:right;min-height:68px}.calc-expr{font-size:.85rem;color:#526b79;min-height:1.2em;word-break:break-all}.calc-value{font-size:1.75rem;font-weight:900;word-break:break-all;font-variant-numeric:tabular-nums}
+    .calc-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 10px 12px}.calc-keys button{min-height:46px;border:2px solid #193348;border-radius:11px;background:#fff;color:#193348;font-size:1.15rem;font-weight:800;padding:0}.calc-keys .op{background:#edf7ff}.calc-keys .fn{background:#fff0f1}.calc-keys .eq{background:#ffcf68}.calc-keys .zero{grid-column:span 2}
+    @media print{.calc,.calc-toggle{display:none!important}}
     input:disabled{background:#eef1f3;color:#526b79;border-style:dashed;cursor:not-allowed;opacity:1}input.auto:disabled{background:#eaf6ff;color:#193348;border-style:solid;font-weight:800;cursor:default}tr.locked td{color:#8397a3}.tag{display:inline-block;font-size:.75rem;font-weight:800;padding:2px 7px;border-radius:10px;background:#eaf6ff;margin-left:6px;white-space:nowrap}.upload{background:#eaf8f3;border:2px dashed #6fbf9f;border-radius:16px;padding:16px;margin:14px 0}.upload h3{margin:0 0 5px}.upload p{margin:0 0 10px}.first-four{font-weight:700}
   </style>
 </head>
@@ -48,6 +54,18 @@
   <nav class="steps" id="steps" aria-label="Steps" hidden></nav>
   <section class="panel" id="app" aria-live="polite"></section>
 </main>
+<button id="calc-toggle" class="calc-toggle" type="button" aria-expanded="false" aria-controls="calc" title="Calculator"><span aria-hidden="true">🧮</span></button>
+<div id="calc" class="calc" role="dialog" aria-labelledby="calc-title" tabindex="-1" hidden>
+  <div class="calc-bar" id="calc-bar"><span><span id="calc-title">Calculator</span> <small id="calc-drag" aria-hidden="true">✥</small></span><button class="calc-close" id="calc-close" type="button" aria-label="Close calculator">✕</button></div>
+  <div class="calc-screen"><div class="calc-expr" id="calc-expr"></div><div class="calc-value" id="calc-value" aria-live="polite">0</div></div>
+  <div class="calc-keys" id="calc-keys">
+    <button class="fn" data-key="C">C</button><button class="fn" data-key="Backspace" aria-label="Delete">⌫</button><button class="op" data-key="neg" aria-label="Change sign">±</button><button class="op" data-key="/" aria-label="Divide">÷</button>
+    <button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="op" data-key="*" aria-label="Multiply">×</button>
+    <button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button class="op" data-key="-" aria-label="Subtract">−</button>
+    <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button class="op" data-key="+" aria-label="Add">+</button>
+    <button class="zero" data-key="0">0</button><button data-key=".">.</button><button class="eq" data-key="=">=</button>
+  </div>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 <script>
 (() => {
@@ -97,7 +115,7 @@
     manual:'Copy your measurements', manualHelp:'Keep your PhysTracker table beside this page. Copy one time and one position into each row, in the same order. Or try an example first.',
     notice_runner:'Use metres in PhysTracker and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Copy Time and X below.',
     notice_rocket:'Use metres in PhysTracker, put the origin at the launch pad, and point Y upward. Copy Time and Y below.',
-    timeError:'Times must increase by at least 0.01 s from one point to the next. Check point {a} and point {b}.', accelCards:'The accelerations you calculated', accelGraphTitle:'Build your acceleration–time bar graph', accelTitle:'How did the speed change?', accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Calculate each acceleration yourself. Write one or two digits after the decimal point. A close estimate is OK!',
+    timeError:'Times must increase by at least {gap} s from one point to the next. Check point {a} and point {b}.', accelCards:'The accelerations you calculated', accelGraphTitle:'Build your acceleration–time bar graph', accelTitle:'How did the speed change?', accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Calculate each acceleration yourself. Write one or two digits after the decimal point. A close estimate is OK!',
     accelFormula:'average acceleration = change in speed ÷ time between the speeds', accelUnitHelp:'m/s/s means metres per second per second',
     midpointHelp:'Each speed is an average over a whole interval. We place it halfway through that interval. The time below is the gap between those two halfway times. This gives us an estimate of acceleration.',
     comparison:'Compare intervals', speedChange:'Speed goes from → to (m/s)', elapsed:'Time between speeds (s)', changeInput:'Your speed change (m/s)', accelInput:'Your acceleration (m/s/s)', halfway:'Halfway times',
@@ -115,7 +133,7 @@
     manual:'Copia tus mediciones', manualHelp:'Pon tu tabla de PhysTracker al lado de esta página. Copia un tiempo y una posición en cada fila, en el mismo orden. O prueba primero un ejemplo.',
     notice_runner:'Usa metros en PhysTracker y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Copia el tiempo y X abajo.',
     notice_rocket:'Usa metros en PhysTracker, coloca el origen en la plataforma y orienta Y hacia arriba. Copia el tiempo e Y abajo.',
-    timeError:'Los tiempos deben aumentar al menos 0.01 s de un punto al siguiente. Revisa el punto {a} y el punto {b}.', accelCards:'Las aceleraciones que calculaste', accelGraphTitle:'Construye tu gráfica de barras aceleración–tiempo', accelTitle:'¿Cómo cambió la rapidez?', accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Calcula cada aceleración tú mismo. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
+    timeError:'Los tiempos deben aumentar al menos {gap} s de un punto al siguiente. Revisa el punto {a} y el punto {b}.', accelCards:'Las aceleraciones que calculaste', accelGraphTitle:'Construye tu gráfica de barras aceleración–tiempo', accelTitle:'¿Cómo cambió la rapidez?', accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Calcula cada aceleración tú mismo. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
     accelFormula:'aceleración media = cambio de rapidez ÷ tiempo entre las rapideces', accelUnitHelp:'m/s/s significa metros por segundo por segundo',
     midpointHelp:'Cada rapidez es un promedio de todo un intervalo. La ubicamos a la mitad de ese intervalo. El tiempo de abajo es la diferencia entre esas dos mitades. Así estimamos la aceleración.',
     comparison:'Compara intervalos', speedChange:'La rapidez va de → a (m/s)', elapsed:'Tiempo entre rapideces (s)', changeInput:'Tu cambio de rapidez (m/s)', accelInput:'Tu aceleración (m/s/s)', halfway:'Tiempos a la mitad',
@@ -135,7 +153,7 @@
     subtitle:'Bring your PhysTracker data. Calculate velocity and acceleration. Build and explain your graphs.',
     steps:['1. Choose','2. Data','3. Velocity','4. Graph','5. Acceleration','6. Acceleration graph'],
     steps_runner:['1. Choose','2. Data','3. Speed table','4. Speed graph','5. Acceleration','6. Acceleration graph'],
-    steps_rocket:['1. Choose','2. Data','3. Velocity table','4. Height & velocity graphs','5. Acceleration','6. Acceleration graph'],
+    steps_rocket:['1. Choose','2. Data','3. Velocity table','4. Velocity graph','5. Acceleration','6. Acceleration graph'],
     upload:'📂 Upload your PhysTracker CSV', uploadHelp_runner:'Choose the “motion_data” CSV file. We read Time and X.', uploadHelp_rocket:'Choose the “motion_data” CSV file. We read Time and Y (up to 15 points). If the file has more, we spread 15 across the flight and always keep the highest one.', import:'Choose CSV file',
     manual:'✏️ Or copy your measurements',
     notice_runner:'Use metres in PhysTracker and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Upload the CSV or copy Time and X below.',
@@ -151,7 +169,7 @@
     speedReady_runner:'All speeds are done! Build your speed graph.', speedReady_rocket:'All velocities are done! Build your graphs.',
     speedRetry_runner:'Check the highlighted answers. Divide the distance by the time taken. Try one or two digits after the decimal point. A close estimate is OK.',
     speedRetry_rocket:'Check the highlighted answers. Divide the change in height by the time taken. Keep the minus sign when the height goes down. A close estimate is OK.',
-    cards:'The values from your table', navResults:'Speed table', navRocketResults:'Velocity table', navRocketGraphs:'Height & velocity graphs',
+    cards:'The values from your table', navResults:'Speed table', navRocketResults:'Velocity table', navRocketGraphs:'Velocity graph',
     accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Write one or two digits after the decimal point. A close estimate is OK!',
     accelReady:'All calculations are done! Build your acceleration graph.',
     accelTitle_rocket:'How did the velocity change?',
@@ -172,7 +190,7 @@
     subtitle:'Trae tus datos de PhysTracker. Calcula la velocidad y la aceleración. Construye y explica tus gráficas.',
     steps:['1. Elige','2. Datos','3. Velocidad','4. Gráfica','5. Aceleración','6. Gráfica de aceleración'],
     steps_runner:['1. Elige','2. Datos','3. Tabla de rapidez','4. Gráfica de rapidez','5. Aceleración','6. Gráfica de aceleración'],
-    steps_rocket:['1. Elige','2. Datos','3. Tabla de velocidad','4. Gráficas de altura y velocidad','5. Aceleración','6. Gráfica de aceleración'],
+    steps_rocket:['1. Elige','2. Datos','3. Tabla de velocidad','4. Gráfica de velocidad','5. Aceleración','6. Gráfica de aceleración'],
     upload:'📂 Sube tu CSV de PhysTracker', uploadHelp_runner:'Elige el archivo CSV “motion_data”. Leemos el tiempo y X.', uploadHelp_rocket:'Elige el archivo CSV “motion_data”. Leemos el tiempo e Y (hasta 15 puntos). Si tiene más, repartimos 15 por todo el vuelo y siempre guardamos el más alto.', import:'Elegir archivo CSV',
     manual:'✏️ O copia tus mediciones',
     notice_runner:'Usa metros en PhysTracker y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Sube el CSV o copia el tiempo y X abajo.',
@@ -188,7 +206,7 @@
     speedReady_runner:'¡Todas las rapideces están listas! Construye tu gráfica de rapidez.', speedReady_rocket:'¡Todas las velocidades están listas! Construye tus gráficas.',
     speedRetry_runner:'Revisa las respuestas marcadas. Divide la distancia entre el tiempo empleado. Prueba con uno o dos números después del punto decimal. Aceptamos una respuesta aproximada.',
     speedRetry_rocket:'Revisa las respuestas marcadas. Divide el cambio de altura entre el tiempo empleado. Conserva el signo menos cuando la altura baja. Aceptamos una respuesta aproximada.',
-    cards:'Los valores de tu tabla', navResults:'Tabla de rapidez', navRocketResults:'Tabla de velocidad', navRocketGraphs:'Gráficas de altura y velocidad',
+    cards:'Los valores de tu tabla', navResults:'Tabla de rapidez', navRocketResults:'Tabla de velocidad', navRocketGraphs:'Gráfica de velocidad',
     accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
     accelReady:'¡Todos los cálculos están listos! Construye tu gráfica de aceleración.',
     accelTitle_rocket:'¿Cómo cambió la velocidad?',
@@ -217,7 +235,9 @@
   const sig = () => SIG[state.mode]||2;
   const roundSig = (n,s=sig()) => Number(Number(n).toPrecision(s));
   const fmt = (n,s=sig()) => {if(!Number.isFinite(n))return '—';const r=roundSig(n,s);return Math.abs(r)>=10**(s-1)?String(r):r.toPrecision(s);};
-  const fmtTime = n => Number.isFinite(n)?n.toFixed(2):'—';
+  // Time decimals: runner timers 2; rocket videos ~60 fps (0.017 s per frame) need 3, or Δt becomes 0.01 or 0.02.
+  const TDEC={runner:2,rocket:3},tdec=()=>TDEC[state.mode]||2,tgap=()=>10**-tdec();
+  const fmtTime = n => Number.isFinite(n)?n.toFixed(tdec()):'—';
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fill = (text,vars) => text.replace(/\{(\w+)\}/g,(_,key)=>vars[key]);
   const colors=['#9edfe8','#ffd782','#cab7f0','#f5b5c8','#b8dfa4','#ffc69a','#acd0fa','#e5c5ed','#b2dfcf','#f7e08a','#c3d8b0','#f0c2a8'];
@@ -230,10 +250,10 @@
     if(state.mode==='runner'){const dir=Math.sign(p[p.length-1].v-p[0].v)||1;pos=p.map(q=>dir*(q.v-p[0].v));}
     else pos=p.map(q=>q.v);
     // Divide the numbers as displayed, so a student checking by calculator gets the app's answer.
-    const ints=p.slice(1).map((q,i)=>{const dt=Number((q.t-p[i].t).toFixed(2)),raw=pos[i+1]-pos[i],d=roundSig(state.mode==='runner'?Math.abs(raw):raw);return {t1:p[i].t,t2:q.t,d,dt,val:d/dt};});
+    const ints=p.slice(1).map((q,i)=>{const dt=Number((q.t-p[i].t).toFixed(tdec())),raw=pos[i+1]-pos[i],d=roundSig(state.mode==='runner'?Math.abs(raw):raw);return {t1:p[i].t,t2:q.t,d,dt,val:d/dt};});
     return {p,pos,ints};
   }
-  const graphKey = () => state.stage===5?'acceleration':state.mode==='runner'?'speed':state.graphType;
+  const graphKey = () => state.stage===5?'acceleration':state.mode==='runner'?'speed':'velocity';
   const fmtValue = (key,v) => key==='acceleration'?v.toFixed(2):fmt(v);
   function G(){const k=graphKey();return state.g[k]||(state.g[k]={heights:[],checked:[],scale:null,answer:'',answerChecked:false});}
   function targets(){
@@ -264,13 +284,13 @@
   const tooSmall = () => !(Number(G().scale)>0)||Number(G().scale)<maxVal();
   function graphComplete(){const g=G();return !tooSmall()&&targets().every((x,i)=>g.checked[i]&&barCorrect(g.heights[i],x.value));}
 
-  const hundredths = v => Math.round(Number(v)*100+1e-9);
+  const ticks = v => Math.round(Number(v)*10**tdec()+1e-9);
   let badPoint=0;
   function validate(){
     const [mn,mx]=LIMITS[state.mode];
     if(state.rows.length<mn||state.rows.length>mx||state.rows.some(r=>r.t===''||r.v===''||!Number.isFinite(Number(r.t))||!Number.isFinite(Number(r.v))))return 'needPoints';
-    // Compare whole hundredths: 2.03 − 2.02 is 0.00999… in floating point and must still pass.
-    const bad=state.rows.findIndex((r,i)=>i>0&&hundredths(r.t)-hundredths(state.rows[i-1].t)<1);
+    // Compare whole time steps: 2.03 − 2.02 is 0.00999… in floating point and must still pass.
+    const bad=state.rows.findIndex((r,i)=>i>0&&ticks(r.t)-ticks(state.rows[i-1].t)<1);
     if(bad>0){badPoint=bad;return 'timeError';}
     return null;
   }
@@ -278,7 +298,7 @@
   function render(){
     const graphScroll=$('.graph-area')?.scrollLeft||0;
     document.documentElement.lang=state.lang;$('#brand').textContent=t('brand');$('#title').textContent=t('title');$('#subtitle').textContent=t('subtitle');$('#language').textContent=state.lang==='es'?'English':'Español';
-    document.title=`PhysTracker for Kids · ${t('title')}`;
+    document.title=`PhysTracker for Kids · ${t('title')}`;calcLabels();
     $('.hero').hidden=!state.welcomed;$('#steps').hidden=!state.welcomed;$('#steps').setAttribute('aria-label',t('stepsLabel'));
     $('#steps').innerHTML=(state.mode?tm('steps'):t('steps')).map((s,i)=>`<span class="step ${i===state.stage?'active':(i<state.stage||state.finished)?'done':''}" ${i===state.stage?'aria-current="step"':''}>${s}</span>`).join('');
     $('#app').innerHTML=!state.welcomed?welcomeView():state.finished?completionView():[chooseView,dataView,resultsView,graphView,accelerationView,graphView][state.stage]();
@@ -317,7 +337,7 @@
       pointsTable=`<h3>${t('pointsTable')}</h3><div class="table-wrap"><table><thead><tr><th>${t('point')}</th><th>${t('time')}</th><th>${t('height')}</th></tr></thead><tbody>${s.p.map((q,i)=>`<tr><td>${i+1}</td><td>${fmtTime(q.t)}</td><td class="result">${fmt(s.pos[i])}</td></tr>`).join('')}</tbody></table></div><h3>${t('intervalsTable')}</h3>`;
       if(s.pos.filter(h=>h<-0.5).length>s.pos.length/2)warn=`<div class="notice error">${t('negHeights')}</div>`;
     }
-    return `<h2>${tm('results')}</h2><p>${tm('resultsIntro')}</p><div class="formula">${tm('formula')}</div>${warn}${pointsTable}${firstFourNote('speed')}<div class="table-wrap"><table><thead><tr><th>${t('interval')}</th><th>${t('times')}</th>${head}</tr></thead><tbody>${ints}</tbody></table></div>${calcFeedback('speed')}<div class="question"><strong>💭 ${tm('readThink')}</strong></div>${navigation({action:'back',label:state.mode==='runner'?'navData':'navRocketData'},{action:'check-calc',label:'checkCalc',kind:'speed'},{action:'graph',label:state.mode==='runner'?'navSpeed':'navPick',disabled:!calcReady('speed')})}${toolsView()}`;
+    return `<h2>${tm('results')}</h2><p>${tm('resultsIntro')}</p><div class="formula">${tm('formula')}</div>${warn}${pointsTable}${firstFourNote('speed')}<div class="table-wrap"><table><thead><tr><th>${t('interval')}</th><th>${t('times')}</th>${head}</tr></thead><tbody>${ints}</tbody></table></div>${calcFeedback('speed')}<div class="question"><strong>💭 ${tm('readThink')}</strong></div>${navigation({action:'back',label:state.mode==='runner'?'navData':'navRocketData'},{action:'check-calc',label:'checkCalc',kind:'speed'},{action:'graph',label:state.mode==='runner'?'navSpeed':'navRocketGraphs',disabled:!calcReady('speed')})}${toolsView()}`;
   }
   // ── Student calculations: the first FIRST rows by hand, the rest locked until those are right.
   function calcRows(kind){return kind==='speed'?series().ints.map(r=>({v:roundSig(r.val)})):accelerations().map(r=>({delta:r.delta,accel:r.value}));}
@@ -349,10 +369,10 @@
   function accelerations(){
     const ints=series().ints;
     const speeds=ints.map(r=>roundSig(r.val));
-    const mids=ints.map(r=>Number(((r.t1+r.t2)/2).toFixed(3)));
+    const mids=ints.map(r=>Number(((r.t1+r.t2)/2).toFixed(tdec()+1)));
     return ints.slice(1).map((r,i)=>{
       // Use the displayed time in the division so a student calculator agrees.
-      const dt=Math.round(Number((mids[i+1]-mids[i]).toFixed(3))*100+1e-8)/100;
+      const k=10**tdec(),dt=Math.round(Number((mids[i+1]-mids[i]).toFixed(tdec()+1))*k+1e-8)/k;
       const delta=Number((speeds[i+1]-speeds[i]).toPrecision(12));
       return {from:speeds[i],to:speeds[i+1],delta,dt,start:mids[i],end:mids[i+1],time:(mids[i]+mids[i+1])/2,value:Number((delta/dt).toFixed(2))};
     });
@@ -361,13 +381,11 @@
   function accelerationView(){
     const rows=accelerations().map((r,i)=>{
       const label=`${i+1} → ${i+2}`;
-      return `<tr class="${rowState('accel',i)==='locked'?'locked':''}"><td>${label}${rowTag('accel',i)}</td><td><strong>${fmt(r.from)} → ${fmt(r.to)}</strong></td><td><strong>${r.dt.toFixed(2)}</strong></td><td>${calcField('accel',i,'delta',r.delta,ta('changeInput'),label)}</td><td>${calcField('accel',i,'accel',r.value,t('accelInput'),label)}</td></tr>`;
+      return `<tr class="${rowState('accel',i)==='locked'?'locked':''}"><td>${label}${rowTag('accel',i)}</td><td><strong>${fmt(r.from)} → ${fmt(r.to)}</strong></td><td><strong>${r.dt.toFixed(tdec())}</strong></td><td>${calcField('accel',i,'delta',r.delta,ta('changeInput'),label)}</td><td>${calcField('accel',i,'accel',r.value,t('accelInput'),label)}</td></tr>`;
     }).join('');
     return `<h2>${ta('accelTitle')}</h2><p>${ta('accelIntro')}</p><div class="formula">${ta('accelFormula')}<div class="muted">${t('accelUnitHelp')}</div></div><p class="notice">${ta('accelSign')}</p>${firstFourNote('accel')}<div class="table-wrap"><table><thead><tr><th>${t('comparison')}</th><th>${ta('speedChange')}</th><th>${ta('elapsed')}</th><th>${ta('changeInput')}</th><th>${t('accelInput')}</th></tr></thead><tbody>${rows}</tbody></table></div>${calcFeedback('accel')}${navigation({action:'speed-graph',label:state.mode==='runner'?'navSpeed':'navRocketGraphs'},{action:'check-calc',label:'checkCalc',kind:'accel'},{action:'accel-graph',label:'navAccelGraph',disabled:!calcReady('accel')})}${toolsView()}`;
   }
-  function pickerView(){return `<h2>${t('pickGraph')}</h2><div class="choice-grid"><button class="big-choice" data-action="pick" data-graph="height"><strong>${t('heightGraph')}</strong><span>${t('heightGraphHelp')}</span></button><button class="big-choice" data-action="pick" data-graph="velocity"><strong>${t('velocityGraph')}</strong><span>${t('velocityGraphHelp')}</span></button></div>${navigation({action:'back-results',label:'navRocketResults'},null,null)}${toolsView()}`;}
   function graphView(showNavigation=true){
-    if(state.mode==='rocket'&&state.stage===3&&!state.graphType)return pickerView();
     const key=graphKey(),g=G(),tg=targets(),ax=axis(),u=unit();
     const yTitle=key==='acceleration'?t('axisAcceleration'):key==='speed'?t('axisSpeed'):key==='height'?t('axisHeight'):t('axisVelocity'),xTitle=key==='acceleration'?t('axisAccelTime'):key==='height'?t('axisTime'):t('axisInterval');
     const z=pct(0,ax),ticks=Math.round((ax.hi-ax.lo)/ax.step);
@@ -381,7 +399,6 @@
       const mark=g.checked[i]?`<span class="status ${good?'ok':'retry'}">${good?'✓':'↕'} ${t(hint)}</span>`:'';
       return `<div class="bar-card" style="--color:${colors[i%colors.length]}"><strong>${x.title}</strong>${x.when?`<span class="when">${x.when}</span>`:''}<div class="target-value">${fmtValue(key,x.value)} <small>${u}</small></div><button class="small" data-action="check-bar" data-index="${i}" aria-label="${t('checkBar')} ${i+1}">${t('checkBar')}</button><div id="bar-status-${i}">${mark}</div></div>`;
     }).join('');
-    const tabs=state.mode==='rocket'&&key!=='acceleration'?`<div class="graph-tabs"><button class="secondary ${key==='height'?'active':''}" data-action="pick" data-graph="height">${t('heightGraph')}</button><button class="secondary ${key==='velocity'?'active':''}" data-action="pick" data-graph="velocity">${t('velocityGraph')}</button></div>`:'';
     let question='';
     if(graphComplete()&&key!=='acceleration'){
       const b=best(),ok=g.answerChecked&&Number(g.answer)===b,x=tg[b];
@@ -389,7 +406,7 @@
       question=`<div class="question"><strong>❓ ${t(`q_${key}`)}</strong><div class="row"><select id="answer" class="wide"><option value="">${t('chooseOne')}</option>${tg.map((y,i)=>`<option value="${i}" ${String(g.answer)===String(i)?'selected':''}>${key==='height'?`${y.label} s`:`${y.title} (${y.when})`}</option>`).join('')}</select><button class="small" data-action="check-answer">${t('checkAnswer')}</button></div>${g.answerChecked?`<div class="notice ${ok?'success':'error'}">${ok?answer:t('a_wrong')}</div>`:''}<p><strong>💭 ${t(`think_${key}`)}</strong></p></div>`;
     }
     const negNote=ax.lo<0?`<p class="muted">${key==='acceleration'?ta('accelNegative'):t('negNote')}</p>`:'';
-    return `${tabs}<h2>${t(key==='acceleration'?'accelGraphTitle':'graph')}</h2><p>${key==='acceleration'?ta('accelGraphIntro'):t('graphIntro')}</p><label><strong>${t('scale')} (${u})</strong> <input type="number" id="scale" min="0" step="any" value="${esc(g.scale??niceTop())}"></label><p class="muted">${t('scaleHelp')}</p>${tooSmall()?`<div class="notice error">${t('scaleError')}</div>`:''}${notice()}<div class="graph-workspace"><div class="chart-frame"><div class="y-axis-title">${yTitle}</div><div class="graph-area"><div class="chart" role="group" aria-label="${t('graph')}"><div class="ylabels">${Array.from({length:ticks+1},(_,i)=>`<span style="bottom:${i/ticks*100}%">${Number((ax.lo+i*ax.step).toPrecision(10))}</span>`).join('')}</div><div class="plot" style="--grid-step:${100/ticks}%">${ax.lo<0?`<div class="zero-line" style="bottom:${z}%"></div>`:''}${bars}</div><div class="xlabels">${tg.map(x=>`<span>${x.label}</span>`).join('')}</div></div></div></div><p class="axis-title">${xTitle}</p>${negNote}<p class="muted" id="drag-help">${t('keyboardHelp')}</p><div class="bar-inputs"><h3>${t(key==='acceleration'?'accelCards':'cards')}</h3>${cards}</div></div>${graphComplete()?`<div class="actions"><button class="primary" data-action="download">${t('download')}</button></div>`:''}${question}${key==='acceleration'&&graphComplete()?`<div class="question"><strong>${ta('accelThink')}</strong></div>`:''}${showNavigation?navigation({action:key==='acceleration'?'accel':'back-results',label:key==='acceleration'?'navAccel':state.mode==='runner'?'navResults':'navRocketResults'},{action:'check-graph',label:'checkGraph'},key!=='acceleration'?{action:'accel',label:'navAccel'}:{action:'finish',label:'finish',disabled:!graphComplete()}):''}${showNavigation&&key==='acceleration'&&!graphComplete()?`<p class="muted">${t('finishHint')}</p>`:''}${showNavigation?toolsView():''}`;
+    return `<h2>${t(key==='acceleration'?'accelGraphTitle':'graph')}</h2><p>${key==='acceleration'?ta('accelGraphIntro'):t('graphIntro')}</p><label><strong>${t('scale')} (${u})</strong> <input type="number" id="scale" min="0" step="any" value="${esc(g.scale??niceTop())}"></label><p class="muted">${t('scaleHelp')}</p>${tooSmall()?`<div class="notice error">${t('scaleError')}</div>`:''}${notice()}<div class="graph-workspace"><div class="chart-frame"><div class="y-axis-title">${yTitle}</div><div class="graph-area"><div class="chart" role="group" aria-label="${t('graph')}"><div class="ylabels">${Array.from({length:ticks+1},(_,i)=>`<span style="bottom:${i/ticks*100}%">${Number((ax.lo+i*ax.step).toPrecision(10))}</span>`).join('')}</div><div class="plot" style="--grid-step:${100/ticks}%">${ax.lo<0?`<div class="zero-line" style="bottom:${z}%"></div>`:''}${bars}</div><div class="xlabels">${tg.map(x=>`<span>${x.label}</span>`).join('')}</div></div></div></div><p class="axis-title">${xTitle}</p>${negNote}<p class="muted" id="drag-help">${t('keyboardHelp')}</p><div class="bar-inputs"><h3>${t(key==='acceleration'?'accelCards':'cards')}</h3>${cards}</div></div>${graphComplete()?`<div class="actions"><button class="primary" data-action="download">${t('download')}</button></div>`:''}${question}${key==='acceleration'&&graphComplete()?`<div class="question"><strong>${ta('accelThink')}</strong></div>`:''}${showNavigation?navigation({action:key==='acceleration'?'accel':'back-results',label:key==='acceleration'?'navAccel':state.mode==='runner'?'navResults':'navRocketResults'},{action:'check-graph',label:'checkGraph'},key!=='acceleration'?{action:'accel',label:'navAccel'}:{action:'finish',label:'finish',disabled:!graphComplete()}):''}${showNavigation&&key==='acceleration'&&!graphComplete()?`<p class="muted">${t('finishHint')}</p>`:''}${showNavigation?toolsView():''}`;
   }
   function setBarHeight(index,value){
     const g=G(),ax=axis();
@@ -434,9 +451,9 @@
     const header=lines.findIndex(line=>/^\s*"?Time \(s\)"?\s*,/i.test(line));if(header<0)throw Error('header');
     const cols=lines[header].split(',').map(c=>c.trim().replace(/"/g,''));
     const col=cols.findIndex(c=>new RegExp(`^${state.mode==='runner'?'X':'Y'} \\(m\\)$`,'i').test(c));if(col<0)throw Error(state.mode==='rocket'?'noY':'header');
-    const all=[];for(let i=header+1;i<lines.length;i++){const line=lines[i].trim();if(!line||/Velocity Data/i.test(line))break;const cells=line.split(',');if(cells.length<=col)break;const time=Number(cells[0].trim()),v=Number(cells[col].trim());if(!Number.isFinite(time)||!Number.isFinite(v))throw Error('value');all.push({t:String(Number(time.toFixed(2))),v:String(Number(v.toFixed(2)))});}
+    const all=[];for(let i=header+1;i<lines.length;i++){const line=lines[i].trim();if(!line||/Velocity Data/i.test(line))break;const cells=line.split(',');if(cells.length<=col)break;const time=Number(cells[0].trim()),v=Number(cells[col].trim());if(!Number.isFinite(time)||!Number.isFinite(v))throw Error('value');all.push({t:String(Number(time.toFixed(tdec()))),v:String(Number(v.toFixed(2)))});}
     all.sort((p,q)=>Number(p.t)-Number(q.t));
-    for(let i=all.length-1;i>0;i--)if(hundredths(all[i].t)-hundredths(all[i-1].t)<1)all.splice(i,1);
+    for(let i=all.length-1;i>0;i--)if(ticks(all[i].t)-ticks(all[i-1].t)<1)all.splice(i,1);
     if(all.length<LIMITS[state.mode][0])throw Error('count');
     const must=state.mode==='rocket'?all.reduce((b,q,i)=>Number(q.v)>Number(all[b].v)?i:b,0):null;
     return {rows:pick(all.length,LIMITS[state.mode][1],must).map(i=>({...all[i]})),total:all.length};
@@ -508,10 +525,9 @@
     else if(action==='demo'){state.rows=demos[button.dataset.demo].map(([a,b])=>({t:String(a),v:String(b)}));resetGraphs();state.message='';render();}
     else if(action==='add'&&state.rows.length<LIMITS[state.mode][1]){state.rows.push({t:'',v:''});state.message='';render();}
     else if(action==='remove'&&state.rows.length>LIMITS[state.mode][0]){state.rows.splice(Number(button.dataset.index),1);state.message='';render();}
-    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx,a:badPoint,b:badPoint+1});}else{const key=JSON.stringify([state.mode,points()]);if(state.resultsKey!==key){resetGraphs();state.resultsKey=key;}state.stage=2;state.message='';render();}}
+    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx,a:badPoint,b:badPoint+1,gap:tgap().toFixed(tdec())});}else{const key=JSON.stringify([state.mode,points()]);if(state.resultsKey!==key){resetGraphs();state.resultsKey=key;}state.stage=2;state.message='';render();}}
     else if(action==='back'){state.stage=1;state.message='';render();}
-    else if(action==='graph'&&calcReady('speed')){state.stage=3;state.message='';if(state.mode==='runner'){const g=G();if(g.scale==null)g.scale=niceTop();}render();}
-    else if(action==='pick'){state.graphType=button.dataset.graph;const g=G();if(g.scale==null)g.scale=niceTop();state.message='';render();}
+    else if(action==='graph'&&calcReady('speed')){state.stage=3;state.message='';const g=G();if(g.scale==null)g.scale=niceTop();render();}
     else if(action==='back-results'){state.stage=2;state.message='';render();}
     else if(action==='check-bar'){G().checked[Number(button.dataset.index)]=true;if(graphComplete())setMessage(graphKey()==='acceleration'?accelGoodKey():'graphGood','success');else{state.message='';render();}}
     else if(action==='check-graph'){const g=G();g.checked=targets().map(()=>true);const good=graphComplete();setMessage(good?(graphKey()==='acceleration'?accelGoodKey():'graphGood'):'graphTry',good?'success':'error');}
@@ -524,6 +540,72 @@
     else hideToast();
     if(state.stage!==previousStage||state.finished!==wasFinished){const heading=$('#app h2');heading?.setAttribute('tabindex','-1');heading?.focus();heading?.scrollIntoView?.({block:'start'});}
   });
+  // ── Pocket calculator: floating, draggable, separate from #app so re-renders never reset it.
+  Object.assign(copy.en,{calcName:'Calculator',calcClose:'Close calculator',calcError:'Error'});
+  Object.assign(copy.es,{calcName:'Calculadora',calcClose:'Cerrar calculadora',calcError:'Error'});
+  const calc={tokens:[],cur:'',done:false,expr:''};
+  const SYM={'+':'+','-':'−','*':'×','/':'÷'};
+  const calcFormat = n => {if(!Number.isFinite(n))return t('calcError');const r=Number(n.toPrecision(10));return Math.abs(r)>=1e12||(r!==0&&Math.abs(r)<1e-9)?r.toExponential(4):String(r);};
+  // × and ÷ before + and −, like a scientific calculator; no eval().
+  function calcEvaluate(tokens){
+    const sum=[];let term=tokens[0];
+    for(let i=1;i<tokens.length;i+=2){const op=tokens[i],n=tokens[i+1];if(op==='*')term*=n;else if(op==='/')term=n===0?NaN:term/n;else{sum.push(term,op);term=n;}}
+    sum.push(term);let total=sum[0];for(let i=1;i<sum.length;i+=2)total=sum[i]==='+'?total+sum[i+1]:total-sum[i+1];return total;
+  }
+  const tokensText = tokens => tokens.map(x=>typeof x==='number'?calcFormat(x):SYM[x]).join(' ');
+  function calcPress(key){
+    const c=calc;
+    if(/^[0-9]$/.test(key)){if(c.done){c.cur='';c.expr='';c.done=false;}if(c.cur.replace(/[-.]/g,'').length>=12)return;c.cur=c.cur==='0'?key:c.cur==='-0'?'-'+key:c.cur+key;}
+    else if(key==='.'){if(c.done){c.cur='';c.expr='';c.done=false;}if(!c.cur.includes('.'))c.cur=(c.cur===''||c.cur==='-'?c.cur+'0':c.cur)+'.';}
+    else if(key==='neg'){c.done=false;c.cur=c.cur.startsWith('-')?c.cur.slice(1):'-'+(c.cur||'0');}
+    else if(key in SYM){
+      if(c.done){c.done=false;c.expr='';}
+      if(c.cur===''||c.cur==='-'){if(typeof c.tokens.at(-1)==='string')c.tokens[c.tokens.length-1]=key;else if(c.tokens.length)c.tokens.push(key);else c.tokens.push(0,key);}
+      else{const n=Number(c.cur);if(!Number.isFinite(n))return calcPress('C');c.tokens.push(n,key);c.cur='';}
+    }
+    else if(key==='='){
+      const tk=[...c.tokens];if(c.cur!==''&&c.cur!=='-')tk.push(Number(c.cur));if(typeof tk.at(-1)==='string')tk.pop();if(!tk.length)return;
+      const r=calcEvaluate(tk);c.expr=`${tokensText(tk)} =`;c.tokens=[];c.cur=Number.isFinite(r)?String(Number(r.toPrecision(10))):'';c.done=true;if(!Number.isFinite(r))c.err=true;
+    }
+    else if(key==='C'){c.tokens=[];c.cur='';c.expr='';c.done=false;}
+    else if(key==='Backspace'){if(c.done){c.cur='';c.expr='';c.done=false;}else c.cur=c.cur.slice(0,-1);}
+    calcShow();
+  }
+  function calcShow(){
+    const c=calc,err=c.err;c.err=false;
+    $('#calc-expr').textContent=c.done?c.expr:tokensText(c.tokens);
+    $('#calc-value').textContent=err?t('calcError'):c.cur===''?(c.tokens.length?'':'0'):c.cur.replace(/^-/,'−');
+  }
+  function calcLabels(){
+    $('#calc-title').textContent=t('calcName');$('#calc-toggle').setAttribute('title',t('calcName'));$('#calc-toggle').setAttribute('aria-label',t('calcName'));$('#calc-close').setAttribute('aria-label',t('calcClose'));
+  }
+  const calcStore={get(){try{return JSON.parse(localStorage.getItem('mgl-calc-pos'));}catch{return null;}},set(v){try{localStorage.setItem('mgl-calc-pos',JSON.stringify(v));}catch{}}};
+  function calcPlace(left,top){
+    const box=$('#calc'),w=box.offsetWidth||264,h=box.offsetHeight||380,W=window.innerWidth,H=window.innerHeight;
+    left=Math.max(4,Math.min(W-w-4,left));top=Math.max(4,Math.min(H-h-4,top));
+    Object.assign(box.style,{left:`${left}px`,top:`${top}px`,bottom:'auto'});return {left,top};
+  }
+  function calcOpen(open){
+    const box=$('#calc');box.hidden=!open;$('#calc-toggle').setAttribute('aria-expanded',String(open));
+    if(open){const pos=calcStore.get();if(pos)calcPlace(pos.left,pos.top);box.focus({preventScroll:true});}else $('#calc-toggle').focus();
+  }
+  if(typeof window!=='undefined'&&window.addEventListener){
+    $('#calc-toggle').addEventListener('click',()=>calcOpen($('#calc').hidden));
+    $('#calc-close').addEventListener('click',()=>calcOpen(false));
+    $('#calc-keys').addEventListener('click',e=>{const b=e.target.closest('button[data-key]');if(!b)return;calcPress(b.dataset.key);if(e.detail>0)$('#calc').focus({preventScroll:true});});
+    $('#calc').addEventListener('keydown',e=>{
+      if(e.target.closest('button')&&(e.key==='Enter'||e.key===' '))return; // the button's own click handles it
+      const map={'Enter':'=','=':'=','x':'*','X':'*',',':'.','Delete':'C','c':'C','C':'C'};const key=map[e.key]??e.key;
+      if(e.key==='Escape'){e.preventDefault();calcOpen(false);return;}
+      if(/^[0-9]$/.test(key)||['.','+','-','*','/','=','C','Backspace'].includes(key)){e.preventDefault();calcPress(key);}
+    });
+    let cdrag=null;
+    $('#calc-bar').addEventListener('pointerdown',e=>{if(e.target.closest('button')||e.button!==0)return;const r=$('#calc').getBoundingClientRect();cdrag={id:e.pointerId,dx:e.clientX-r.left,dy:e.clientY-r.top};$('#calc-bar').setPointerCapture(e.pointerId);e.preventDefault();});
+    $('#calc-bar').addEventListener('pointermove',e=>{if(cdrag&&e.pointerId===cdrag.id)calcPlace(e.clientX-cdrag.dx,e.clientY-cdrag.dy);});
+    const endDrag=e=>{if(!cdrag||e.pointerId!==cdrag.id)return;cdrag=null;const r=$('#calc').getBoundingClientRect();calcStore.set({left:r.left,top:r.top});};
+    $('#calc-bar').addEventListener('pointerup',endDrag);$('#calc-bar').addEventListener('pointercancel',endDrag);
+    window.addEventListener('resize',()=>{if(!$('#calc').hidden){const r=$('#calc').getBoundingClientRect();calcPlace(r.left,r.top);}});
+  }
   render();
 })();
 </script>
