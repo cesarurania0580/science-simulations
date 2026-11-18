@@ -53,13 +53,13 @@
 (() => {
   const copy = {
     es: {
-      welcome:'¡Bienvenidos, estudiantes de sexto grado!',welcomeQuestion:'¿Cómo cambia un movimiento con el tiempo?',welcomeDescription:'Sube los datos que marcaste en PhysiCam. La aplicación hace los cálculos; tu trabajo es construir la gráfica y explicar lo que muestra.',nameLabel:'Tu nombre o apodo (opcional)',namePlaceholder:'¿Cómo te llamas?',start:'¡Vamos a empezar!',wellDone:'¡Muy bien{name}!',keepTrying:'¡Sigue intentando{name}!',stepsLabel:'Pasos',
-      brand:'🚀 PhysTracker for Kids',title:'Laboratorio de gráficas de movimiento',subtitle:'Trae tus datos de PhysiCam. La aplicación calcula; tú construyes la gráfica y lees lo que dice.',steps:['1. Elige','2. Datos','3. Resultados','4. Gráfica'],
+      welcome:'¡Bienvenidos, estudiantes de sexto grado!',welcomeQuestion:'¿Cómo cambia un movimiento con el tiempo?',welcomeDescription:'Sube los datos que marcaste en PhysTracker. La aplicación hace los cálculos; tu trabajo es construir la gráfica y explicar lo que muestra.',nameLabel:'Tu nombre o apodo (opcional)',namePlaceholder:'¿Cómo te llamas?',start:'¡Vamos a empezar!',wellDone:'¡Muy bien{name}!',keepTrying:'¡Sigue intentando{name}!',stepsLabel:'Pasos',
+      brand:'🚀 PhysTracker for Kids',title:'Laboratorio de gráficas de movimiento',subtitle:'Trae tus datos de PhysTracker. La aplicación calcula; tú construyes la gráfica y lees lo que dice.',steps:['1. Elige','2. Datos','3. Resultados','4. Gráfica'],
       choose:'¿Qué marcaste en tu video?',chooseIntro:'Elige el tipo de movimiento.',runnerTitle:'🏃 Corredor — movimiento horizontal',runnerHelp:'Algo que se mueve por el suelo. Usamos el tiempo y X.',rocketTitle:'🚀 Cohete — movimiento vertical',rocketHelp:'Algo que sube (y quizás vuelve a bajar). Usamos el tiempo e Y.',
-      dataTitle_runner:'Trae los datos del corredor',dataTitle_rocket:'Trae los datos del cohete',upload:'Subir desde PhysiCam',uploadHelp_runner:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo y X.',uploadHelp_rocket:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo e Y.',import:'Elegir CSV',sample:'Puntos a usar',sampleHelp_runner:'Si el archivo tiene más puntos, elegimos puntos repartidos por toda la carrera.',sampleHelp_rocket:'Si el archivo tiene más puntos, elegimos puntos repartidos por todo el vuelo y siempre guardamos el más alto.',manual:'Escribir los datos',manualHelp:'Llena la tabla tú mismo o prueba un ejemplo.',demoRunner:'Carrera de ejemplo',demoBig:'Ejemplo: cohete grande',demoWater:'Ejemplo: cohete de agua',
+      dataTitle_runner:'Trae los datos del corredor',dataTitle_rocket:'Trae los datos del cohete',upload:'Subir desde PhysTracker',uploadHelp_runner:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo y X.',uploadHelp_rocket:'Elige el CSV “motion_data” que descargaste. Leemos el tiempo e Y.',import:'Elegir CSV',sample:'Puntos a usar',sampleHelp_runner:'Si el archivo tiene más puntos, elegimos puntos repartidos por toda la carrera.',sampleHelp_rocket:'Si el archivo tiene más puntos, elegimos puntos repartidos por todo el vuelo y siempre guardamos el más alto.',manual:'Escribir los datos',manualHelp:'Llena la tabla tú mismo o prueba un ejemplo.',demoRunner:'Carrera de ejemplo',demoBig:'Ejemplo: cohete grande',demoWater:'Ejemplo: cohete de agua',
       point:'Punto',time:'Tiempo (s)',position:'Posición X (m)',heightCol:'Altura Y (m)',remove:'Quitar',add:'Agregar punto',toResults:'Ver los resultados →',backChoose:'← Cambiar de movimiento',
-      notice_runner:'Antes de subir: PhysiCam debe estar calibrado en metros (usa las marcas de 3 m). Marca al corredor en cada cronometrista.',notice_rocket:'Antes de subir: PhysiCam debe estar calibrado en metros, con el origen en la plataforma de lanzamiento y el eje Y hacia arriba.',
-      fileError:'No pude leer este CSV. Usa el archivo “motion_data” de PhysiCam o escribe los datos.',noY:'Este CSV no tiene columna Y, así que no sirve para un cohete.',imported:'Importé {used} de {total} puntos. Revisa la tabla antes de seguir.',needPoints:'Necesitas entre {min} y {max} puntos completos.',timeError:'Los tiempos deben aumentar de un punto al siguiente.',negHeights:'Casi todas las alturas son menores que cero. Comprueba que el eje Y apunta hacia arriba en PhysiCam.',
+      notice_runner:'Antes de subir: PhysTracker debe estar calibrado en metros (usa las marcas de 3 m). Marca al corredor en cada cronometrista.',notice_rocket:'Antes de subir: PhysTracker debe estar calibrado en metros, con el origen en la plataforma de lanzamiento y el eje Y hacia arriba.',
+      fileError:'No pude leer este CSV. Usa el archivo “motion_data” de PhysTracker o escribe los datos.',noY:'Este CSV no tiene columna Y, así que no sirve para un cohete.',imported:'Importé {used} de {total} puntos. Revisa la tabla antes de seguir.',needPoints:'Necesitas entre {min} y {max} puntos completos.',timeError:'Los tiempos deben aumentar de un punto al siguiente.',negHeights:'Casi todas las alturas son menores que cero. Comprueba que el eje Y apunta hacia arriba en PhysTracker.',
       results_runner:'La aplicación calculó la rapidez de cada intervalo',results_rocket:'La aplicación calculó la altura y la velocidad',resultsIntro_runner:'Un intervalo va de un punto al siguiente. La aplicación ya hizo la división; tu trabajo es leer la tabla.',resultsIntro_rocket:'Cada punto dice qué tan alto estaba el cohete. Cada intervalo va de un punto al siguiente. Velocidad positiva: sube. Negativa: baja.',formula_runner:'rapidez media = distancia recorrida ÷ tiempo empleado',formula_rocket:'velocidad = cambio de altura ÷ tiempo empleado',
       pointsTable:'Altura en cada punto',intervalsTable:'Velocidad en cada intervalo',interval:'Intervalo',times:'Tiempo (s)',distance:'Distancia (m)',dt:'Tiempo empleado (s)',speed:'Rapidez media (m/s)',height:'Altura (m)',dh:'Cambio de altura (m)',velocity:'Velocidad (m/s)',
       readThink_runner:'Lee: ¿qué intervalo tiene la mayor rapidez? ¿Dónde acelera el corredor y dónde va más despacio?',readThink_rocket:'Lee: ¿a qué altura está el cohete en el último punto? ¿La velocidad se hace más grande o más pequeña?',
@@ -72,13 +72,13 @@
       print:'Imprimir mi gráfica',restart:'Empezar de nuevo',empty:'—'
     },
     en: {
-      welcome:'Welcome, sixth graders!',welcomeQuestion:'How does motion change over time?',welcomeDescription:'Upload the data you tracked in PhysiCam. The app does the calculations; your job is to build the graph and explain what it shows.',nameLabel:'First name or nickname (optional)',namePlaceholder:'What should we call you?',start:'Let’s start!',wellDone:'Well done{name}!',keepTrying:'Keep trying{name}!',stepsLabel:'Steps',
-      brand:'🚀 PhysTracker for Kids',title:'Motion graph lab',subtitle:'Bring your PhysiCam data. The app calculates; you build the graph and read what it says.',steps:['1. Choose','2. Data','3. Results','4. Graph'],
+      welcome:'Welcome, sixth graders!',welcomeQuestion:'How does motion change over time?',welcomeDescription:'Upload the data you tracked in PhysTracker. The app does the calculations; your job is to build the graph and explain what it shows.',nameLabel:'First name or nickname (optional)',namePlaceholder:'What should we call you?',start:'Let’s start!',wellDone:'Well done{name}!',keepTrying:'Keep trying{name}!',stepsLabel:'Steps',
+      brand:'🚀 PhysTracker for Kids',title:'Motion graph lab',subtitle:'Bring your PhysTracker data. The app calculates; you build the graph and read what it says.',steps:['1. Choose','2. Data','3. Results','4. Graph'],
       choose:'What did you track in your video?',chooseIntro:'Pick the kind of motion.',runnerTitle:'🏃 Runner — horizontal motion',runnerHelp:'Something moving along the ground. We use time and X.',rocketTitle:'🚀 Rocket — vertical motion',rocketHelp:'Something going up (and maybe coming back down). We use time and Y.',
-      dataTitle_runner:'Bring in the runner data',dataTitle_rocket:'Bring in the rocket data',upload:'Upload from PhysiCam',uploadHelp_runner:'Choose the “motion_data” CSV you downloaded. We read Time and X.',uploadHelp_rocket:'Choose the “motion_data” CSV you downloaded. We read Time and Y.',import:'Choose CSV',sample:'Points to use',sampleHelp_runner:'If the file has more points, we pick points spread across the run.',sampleHelp_rocket:'If the file has more points, we pick points spread across the flight and always keep the highest one.',manual:'Type the data',manualHelp:'Fill in the table yourself, or try an example.',demoRunner:'Example run',demoBig:'Example: big rocket',demoWater:'Example: water rocket',
+      dataTitle_runner:'Bring in the runner data',dataTitle_rocket:'Bring in the rocket data',upload:'Upload from PhysTracker',uploadHelp_runner:'Choose the “motion_data” CSV you downloaded. We read Time and X.',uploadHelp_rocket:'Choose the “motion_data” CSV you downloaded. We read Time and Y.',import:'Choose CSV',sample:'Points to use',sampleHelp_runner:'If the file has more points, we pick points spread across the run.',sampleHelp_rocket:'If the file has more points, we pick points spread across the flight and always keep the highest one.',manual:'Type the data',manualHelp:'Fill in the table yourself, or try an example.',demoRunner:'Example run',demoBig:'Example: big rocket',demoWater:'Example: water rocket',
       point:'Point',time:'Time (s)',position:'Position X (m)',heightCol:'Height Y (m)',remove:'Remove',add:'Add point',toResults:'See the results →',backChoose:'← Change motion',
-      notice_runner:'Before uploading: PhysiCam must be calibrated in meters (use the 3 m marks). Mark the runner at each timer.',notice_rocket:'Before uploading: PhysiCam must be calibrated in meters, with the origin at the launch pad and the Y axis pointing up.',
-      fileError:'I could not read this CSV. Use the “motion_data” file from PhysiCam, or type the data.',noY:'This CSV has no Y column, so it cannot be used for a rocket.',imported:'Imported {used} of {total} points. Check the table before continuing.',needPoints:'You need between {min} and {max} complete points.',timeError:'Times must increase from one point to the next.',negHeights:'Most heights are below zero. Check that the Y axis points up in PhysiCam.',
+      notice_runner:'Before uploading: PhysTracker must be calibrated in meters (use the 3 m marks). Mark the runner at each timer.',notice_rocket:'Before uploading: PhysTracker must be calibrated in meters, with the origin at the launch pad and the Y axis pointing up.',
+      fileError:'I could not read this CSV. Use the “motion_data” file from PhysTracker, or type the data.',noY:'This CSV has no Y column, so it cannot be used for a rocket.',imported:'Imported {used} of {total} points. Check the table before continuing.',needPoints:'You need between {min} and {max} complete points.',timeError:'Times must increase from one point to the next.',negHeights:'Most heights are below zero. Check that the Y axis points up in PhysTracker.',
       results_runner:'The app calculated the speed in each interval',results_rocket:'The app calculated the height and the velocity',resultsIntro_runner:'An interval goes from one point to the next. The app already did the division; your job is to read the table.',resultsIntro_rocket:'Each point tells how high the rocket was. Each interval goes from one point to the next. Positive velocity: going up. Negative: coming down.',formula_runner:'average speed = distance travelled ÷ time taken',formula_rocket:'velocity = change in height ÷ time taken',
       pointsTable:'Height at each point',intervalsTable:'Velocity in each interval',interval:'Interval',times:'Time (s)',distance:'Distance (m)',dt:'Time taken (s)',speed:'Average speed (m/s)',height:'Height (m)',dh:'Change in height (m)',velocity:'Velocity (m/s)',
       readThink_runner:'Read: which interval has the greatest speed? Where is the runner speeding up, and where slowing down?',readThink_rocket:'Read: how high is the rocket at the last point? Is the velocity getting bigger or smaller?',
@@ -92,12 +92,12 @@
     }
   };
   Object.assign(copy.en, {
-    welcomeDescription:'Copy time and position from your PhysiCam table. Explore speed, calculate acceleration, and build your graphs.',
+    welcomeDescription:'Copy time and position from your PhysTracker table. Explore speed, calculate acceleration, and build your graphs.',
     subtitle:'Copy your measurements. Explore speed and acceleration. Build and explain your graphs.',
-    manual:'Copy your measurements', manualHelp:'Keep your PhysiCam table beside this page. Copy one time and one position into each row, in the same order. Or try an example first.',
-    notice_runner:'Use metres in PhysiCam and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Copy Time and X below.',
-    notice_rocket:'Use metres in PhysiCam, put the origin at the launch pad, and point Y upward. Copy Time and Y below.',
-    timeError:'Times must increase by at least 0.01 s from one point to the next.', accelCards:'The accelerations you calculated', accelGraphTitle:'Build your acceleration–time bar graph', accelTitle:'How did the speed change?', accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Calculate each acceleration yourself. Write one or two digits after the decimal point. A close estimate is OK!',
+    manual:'Copy your measurements', manualHelp:'Keep your PhysTracker table beside this page. Copy one time and one position into each row, in the same order. Or try an example first.',
+    notice_runner:'Use metres in PhysTracker and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Copy Time and X below.',
+    notice_rocket:'Use metres in PhysTracker, put the origin at the launch pad, and point Y upward. Copy Time and Y below.',
+    timeError:'Times must increase by at least 0.01 s from one point to the next. Check point {a} and point {b}.', accelCards:'The accelerations you calculated', accelGraphTitle:'Build your acceleration–time bar graph', accelTitle:'How did the speed change?', accelIntro:'Compare two neighbouring intervals. Subtract the first speed from the next speed, then divide by the time between them. Calculate each acceleration yourself. Write one or two digits after the decimal point. A close estimate is OK!',
     accelFormula:'average acceleration = change in speed ÷ time between the speeds', accelUnitHelp:'m/s/s means metres per second per second',
     midpointHelp:'Each speed is an average over a whole interval. We place it halfway through that interval. The time below is the gap between those two halfway times. This gives us an estimate of acceleration.',
     comparison:'Compare intervals', speedChange:'Speed goes from → to (m/s)', elapsed:'Time between speeds (s)', changeInput:'Your speed change (m/s)', accelInput:'Your acceleration (m/s/s)', halfway:'Halfway times',
@@ -110,12 +110,12 @@
     runnerSteps:['1. Choose','2. Copy data','3. Speed results','4. Speed graph','5. Acceleration','6. Acceleration graph']
   });
   Object.assign(copy.es, {
-    welcomeDescription:'Copia el tiempo y la posición de tu tabla de PhysiCam. Explora la rapidez, calcula la aceleración y construye tus gráficas.',
+    welcomeDescription:'Copia el tiempo y la posición de tu tabla de PhysTracker. Explora la rapidez, calcula la aceleración y construye tus gráficas.',
     subtitle:'Copia tus mediciones. Explora la rapidez y la aceleración. Construye y explica tus gráficas.',
-    manual:'Copia tus mediciones', manualHelp:'Pon tu tabla de PhysiCam al lado de esta página. Copia un tiempo y una posición en cada fila, en el mismo orden. O prueba primero un ejemplo.',
-    notice_runner:'Usa metros en PhysiCam y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Copia el tiempo y X abajo.',
-    notice_rocket:'Usa metros en PhysiCam, coloca el origen en la plataforma y orienta Y hacia arriba. Copia el tiempo e Y abajo.',
-    timeError:'Los tiempos deben aumentar al menos 0.01 s de un punto al siguiente.', accelCards:'Las aceleraciones que calculaste', accelGraphTitle:'Construye tu gráfica de barras aceleración–tiempo', accelTitle:'¿Cómo cambió la rapidez?', accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Calcula cada aceleración tú mismo. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
+    manual:'Copia tus mediciones', manualHelp:'Pon tu tabla de PhysTracker al lado de esta página. Copia un tiempo y una posición en cada fila, en el mismo orden. O prueba primero un ejemplo.',
+    notice_runner:'Usa metros en PhysTracker y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Copia el tiempo y X abajo.',
+    notice_rocket:'Usa metros en PhysTracker, coloca el origen en la plataforma y orienta Y hacia arriba. Copia el tiempo e Y abajo.',
+    timeError:'Los tiempos deben aumentar al menos 0.01 s de un punto al siguiente. Revisa el punto {a} y el punto {b}.', accelCards:'Las aceleraciones que calculaste', accelGraphTitle:'Construye tu gráfica de barras aceleración–tiempo', accelTitle:'¿Cómo cambió la rapidez?', accelIntro:'Compara dos intervalos vecinos. Resta la primera rapidez de la siguiente y divide por el tiempo entre ellas. Calcula cada aceleración tú mismo. Escribe uno o dos números después del punto decimal. ¡Aceptamos una respuesta aproximada!',
     accelFormula:'aceleración media = cambio de rapidez ÷ tiempo entre las rapideces', accelUnitHelp:'m/s/s significa metros por segundo por segundo',
     midpointHelp:'Cada rapidez es un promedio de todo un intervalo. La ubicamos a la mitad de ese intervalo. El tiempo de abajo es la diferencia entre esas dos mitades. Así estimamos la aceleración.',
     comparison:'Compara intervalos', speedChange:'La rapidez va de → a (m/s)', elapsed:'Tiempo entre rapideces (s)', changeInput:'Tu cambio de rapidez (m/s)', accelInput:'Tu aceleración (m/s/s)', halfway:'Tiempos a la mitad',
@@ -131,15 +131,15 @@
   Object.assign(copy.es, {previousStep:'← Paso anterior',nextStep:'Siguiente paso →',navChoose:'Elegir movimiento',navData:'Datos del corredor',navRocketData:'Datos del cohete',navResults:'Resultados de rapidez',navRocketResults:'Resultados del cohete',navSpeed:'Gráfica de rapidez',navAccel:'Tabla de aceleración',navAccelGraph:'Gráfica de aceleración',navGraph:'Construir una gráfica',navPick:'Elegir una gráfica',checkGraph:'Comprobar mi gráfica',tools:'Imprimir o empezar de nuevo',restartQuestion:'¿Empezar de nuevo? Se borrarán tus mediciones, respuestas y gráficas.',cancelRestart:'Conservar mi trabajo',confirmRestart:'Borrar y empezar de nuevo',finish:'Terminar actividad ✓',finishedTitle:'¡Actividad terminada!',finishedText:'Comprobaste tu gráfica. Comparte con tu docente lo que muestra.',reviewGraph:'← Revisar mi gráfica',finishHint:'Comprueba tu gráfica antes de terminar.'});
   // Students calculate velocities and accelerations by hand, then the app can fill the rest.
   Object.assign(copy.en, {
-    welcomeDescription:'Upload your PhysiCam CSV or copy your measurements. Calculate velocity and acceleration, then build your graphs.',
-    subtitle:'Bring your PhysiCam data. Calculate velocity and acceleration. Build and explain your graphs.',
+    welcomeDescription:'Upload your PhysTracker CSV or copy your measurements. Calculate velocity and acceleration, then build your graphs.',
+    subtitle:'Bring your PhysTracker data. Calculate velocity and acceleration. Build and explain your graphs.',
     steps:['1. Choose','2. Data','3. Velocity','4. Graph','5. Acceleration','6. Acceleration graph'],
     steps_runner:['1. Choose','2. Data','3. Speed table','4. Speed graph','5. Acceleration','6. Acceleration graph'],
     steps_rocket:['1. Choose','2. Data','3. Velocity table','4. Height & velocity graphs','5. Acceleration','6. Acceleration graph'],
-    upload:'📂 Upload your PhysiCam CSV', uploadHelp_runner:'Choose the “motion_data” CSV file. We read Time and X.', uploadHelp_rocket:'Choose the “motion_data” CSV file. We read Time and Y (up to 15 points). If the file has more, we spread 15 across the flight and always keep the highest one.', import:'Choose CSV file',
+    upload:'📂 Upload your PhysTracker CSV', uploadHelp_runner:'Choose the “motion_data” CSV file. We read Time and X.', uploadHelp_rocket:'Choose the “motion_data” CSV file. We read Time and Y (up to 15 points). If the file has more, we spread 15 across the flight and always keep the highest one.', import:'Choose CSV file',
     manual:'✏️ Or copy your measurements',
-    notice_runner:'Use metres in PhysiCam and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Upload the CSV or copy Time and X below.',
-    notice_rocket:'Use metres in PhysiCam, put the origin at the launch pad, and point Y upward. Upload the CSV or copy Time and Y below.',
+    notice_runner:'Use metres in PhysTracker and the markers every 3 m to calibrate your video. Track the runner as they pass each marker. Upload the CSV or copy Time and X below.',
+    notice_rocket:'Use metres in PhysTracker, put the origin at the launch pad, and point Y upward. Upload the CSV or copy Time and Y below.',
     results_runner:'Calculate the speed in each interval', results_rocket:'Calculate the velocity in each interval',
     resultsIntro_runner:'The app worked out how far the runner went and how long it took in each interval. Divide the distance by the time to find the speed.',
     resultsIntro_rocket:'The app worked out the change in height and the time taken in each interval. Divide to find the velocity. Positive: going up. Negative: coming down.',
@@ -168,15 +168,15 @@
     finishedText:'You have checked your graphs. Download or print them, and share what they tell you with your teacher.'
   });
   Object.assign(copy.es, {
-    welcomeDescription:'Sube tu CSV de PhysiCam o copia tus mediciones. Calcula la velocidad y la aceleración, y construye tus gráficas.',
-    subtitle:'Trae tus datos de PhysiCam. Calcula la velocidad y la aceleración. Construye y explica tus gráficas.',
+    welcomeDescription:'Sube tu CSV de PhysTracker o copia tus mediciones. Calcula la velocidad y la aceleración, y construye tus gráficas.',
+    subtitle:'Trae tus datos de PhysTracker. Calcula la velocidad y la aceleración. Construye y explica tus gráficas.',
     steps:['1. Elige','2. Datos','3. Velocidad','4. Gráfica','5. Aceleración','6. Gráfica de aceleración'],
     steps_runner:['1. Elige','2. Datos','3. Tabla de rapidez','4. Gráfica de rapidez','5. Aceleración','6. Gráfica de aceleración'],
     steps_rocket:['1. Elige','2. Datos','3. Tabla de velocidad','4. Gráficas de altura y velocidad','5. Aceleración','6. Gráfica de aceleración'],
-    upload:'📂 Sube tu CSV de PhysiCam', uploadHelp_runner:'Elige el archivo CSV “motion_data”. Leemos el tiempo y X.', uploadHelp_rocket:'Elige el archivo CSV “motion_data”. Leemos el tiempo e Y (hasta 15 puntos). Si tiene más, repartimos 15 por todo el vuelo y siempre guardamos el más alto.', import:'Elegir archivo CSV',
+    upload:'📂 Sube tu CSV de PhysTracker', uploadHelp_runner:'Elige el archivo CSV “motion_data”. Leemos el tiempo y X.', uploadHelp_rocket:'Elige el archivo CSV “motion_data”. Leemos el tiempo e Y (hasta 15 puntos). Si tiene más, repartimos 15 por todo el vuelo y siempre guardamos el más alto.', import:'Elegir archivo CSV',
     manual:'✏️ O copia tus mediciones',
-    notice_runner:'Usa metros en PhysiCam y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Sube el CSV o copia el tiempo y X abajo.',
-    notice_rocket:'Usa metros en PhysiCam, coloca el origen en la plataforma y orienta Y hacia arriba. Sube el CSV o copia el tiempo e Y abajo.',
+    notice_runner:'Usa metros en PhysTracker y las marcas cada 3 m para calibrar el video. Marca al corredor al pasar por cada marca. Sube el CSV o copia el tiempo y X abajo.',
+    notice_rocket:'Usa metros en PhysTracker, coloca el origen en la plataforma y orienta Y hacia arriba. Sube el CSV o copia el tiempo e Y abajo.',
     results_runner:'Calcula la rapidez en cada intervalo', results_rocket:'Calcula la velocidad en cada intervalo',
     resultsIntro_runner:'La aplicación calculó cuánto avanzó el corredor y cuánto tiempo tardó en cada intervalo. Divide la distancia entre el tiempo para hallar la rapidez.',
     resultsIntro_rocket:'La aplicación calculó el cambio de altura y el tiempo de cada intervalo. Divide para hallar la velocidad. Positiva: sube. Negativa: baja.',
@@ -264,10 +264,14 @@
   const tooSmall = () => !(Number(G().scale)>0)||Number(G().scale)<maxVal();
   function graphComplete(){const g=G();return !tooSmall()&&targets().every((x,i)=>g.checked[i]&&barCorrect(g.heights[i],x.value));}
 
+  const hundredths = v => Math.round(Number(v)*100+1e-9);
+  let badPoint=0;
   function validate(){
     const [mn,mx]=LIMITS[state.mode];
     if(state.rows.length<mn||state.rows.length>mx||state.rows.some(r=>r.t===''||r.v===''||!Number.isFinite(Number(r.t))||!Number.isFinite(Number(r.v))))return 'needPoints';
-    if(state.rows.some((r,i)=>i>0&&Number(r.t)-Number(state.rows[i-1].t)<0.01))return 'timeError';
+    // Compare whole hundredths: 2.03 − 2.02 is 0.00999… in floating point and must still pass.
+    const bad=state.rows.findIndex((r,i)=>i>0&&hundredths(r.t)-hundredths(state.rows[i-1].t)<1);
+    if(bad>0){badPoint=bad;return 'timeError';}
     return null;
   }
   function notice(){return state.message?`<div class="notice ${state.kind}" role="status">${esc(state.message)}</div>`:'';}
@@ -424,13 +428,15 @@
     if(must!=null&&!idx.includes(must)){let near=1;for(let k=1;k<idx.length-1;k++)if(Math.abs(idx[k]-must)<Math.abs(idx[near]-must))near=k;idx[near]=must;idx.sort((a,b)=>a-b);}
     return idx;
   }
-  // PhysiCam "motion_data" CSV: Time (s), X (m), Y (m), … then a Velocity Data block we ignore.
+  // PhysTracker "motion_data" CSV: Time (s), X (m), Y (m), … then a Velocity Data block we ignore.
   function parseCSV(text){
     const lines=text.replace(/^﻿/,'').split(/\r?\n/);
     const header=lines.findIndex(line=>/^\s*"?Time \(s\)"?\s*,/i.test(line));if(header<0)throw Error('header');
     const cols=lines[header].split(',').map(c=>c.trim().replace(/"/g,''));
     const col=cols.findIndex(c=>new RegExp(`^${state.mode==='runner'?'X':'Y'} \\(m\\)$`,'i').test(c));if(col<0)throw Error(state.mode==='rocket'?'noY':'header');
     const all=[];for(let i=header+1;i<lines.length;i++){const line=lines[i].trim();if(!line||/Velocity Data/i.test(line))break;const cells=line.split(',');if(cells.length<=col)break;const time=Number(cells[0].trim()),v=Number(cells[col].trim());if(!Number.isFinite(time)||!Number.isFinite(v))throw Error('value');all.push({t:String(Number(time.toFixed(2))),v:String(Number(v.toFixed(2)))});}
+    all.sort((p,q)=>Number(p.t)-Number(q.t));
+    for(let i=all.length-1;i>0;i--)if(hundredths(all[i].t)-hundredths(all[i-1].t)<1)all.splice(i,1);
     if(all.length<LIMITS[state.mode][0])throw Error('count');
     const must=state.mode==='rocket'?all.reduce((b,q,i)=>Number(q.v)>Number(all[b].v)?i:b,0):null;
     return {rows:pick(all.length,LIMITS[state.mode][1],must).map(i=>({...all[i]})),total:all.length};
@@ -502,7 +508,7 @@
     else if(action==='demo'){state.rows=demos[button.dataset.demo].map(([a,b])=>({t:String(a),v:String(b)}));resetGraphs();state.message='';render();}
     else if(action==='add'&&state.rows.length<LIMITS[state.mode][1]){state.rows.push({t:'',v:''});state.message='';render();}
     else if(action==='remove'&&state.rows.length>LIMITS[state.mode][0]){state.rows.splice(Number(button.dataset.index),1);state.message='';render();}
-    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx});}else{const key=JSON.stringify([state.mode,points()]);if(state.resultsKey!==key){resetGraphs();state.resultsKey=key;}state.stage=2;state.message='';render();}}
+    else if(action==='results'){const err=validate();if(err){const [mn,mx]=LIMITS[state.mode];setMessage(err,'error',{min:mn,max:mx,a:badPoint,b:badPoint+1});}else{const key=JSON.stringify([state.mode,points()]);if(state.resultsKey!==key){resetGraphs();state.resultsKey=key;}state.stage=2;state.message='';render();}}
     else if(action==='back'){state.stage=1;state.message='';render();}
     else if(action==='graph'&&calcReady('speed')){state.stage=3;state.message='';if(state.mode==='runner'){const g=G();if(g.scale==null)g.scale=niceTop();}render();}
     else if(action==='pick'){state.graphType=button.dataset.graph;const g=G();if(g.scale==null)g.scale=niceTop();state.message='';render();}
